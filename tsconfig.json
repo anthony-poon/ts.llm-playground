@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "rootDir": "./src",
+    "outDir": "dist",
+    "sourceMap": true,
+    "target": "ES6",
+    "paths": {
+      "@core/*": ["core/*"],
+      "@client/*": ["client/*"],
+      "@env": ["env.ts"]
+    }
+  },
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "ts-node": {
+    // https://stackoverflow.com/questions/69669729/typescript-4-4-4-tsconfig-paths-not-resolving-as-expected
+    // This only works with ts-node but not the
+    "require": ["tsconfig-paths/register"]
+  },
+  "exclude": [
+    "jest.config.ts",
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts"
+  ]
+}
