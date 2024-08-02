@@ -2,7 +2,7 @@ import * as Buffer from 'buffer';
 import * as process from 'process';
 import readline from 'readline';
 
-export class DefaultTTY implements TTYInterface {
+export class ReadlineIOStream implements IOStream {
   private rl: readline.Interface;
   constructor() {
     this.rl = readline.createInterface({
@@ -31,9 +31,13 @@ export class DefaultTTY implements TTYInterface {
   }
 }
 
-export interface TTYInterface {
+export interface IOStream {
   write(chunk: Buffer | string): Promise<void>;
   read(query?: string): Promise<string>;
   clear(): void
   print(messages: string[]): Promise<void>;
 }
+
+const ioStream = new ReadlineIOStream();
+
+export default ioStream;

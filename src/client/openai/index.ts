@@ -24,6 +24,7 @@ export class OpenAIClient implements ChatCompletionClient {
     const response = await this.client.chat.completions.create({
       ...request,
       model: this.env.OPENAI_MODEL || "gpt-4o",
+      stream: false,
     }) as OpenAI.Chat.ChatCompletion;
     const content = response?.choices[0]?.message?.content;
     if (!content) {
@@ -36,13 +37,10 @@ export class OpenAIClient implements ChatCompletionClient {
   }
 
   async ping() {
-    const response = await this.client.chat.completions.create("/api/chat", {
-      model: this.env.OLLAMA_MODEL || "llama3",
-    });
-    logger.debug('Response', response.data);
+    // const response = await this.client.chat.completions.create("/api/chat", {
+    //   model: this.env.OPENAI_MODEL || "gpt-4o",
+    //   stream: false,
+    // }) as OpenAI.Chat.ChatCompletion;
+    // logger.debug('Response', response);
   }
 }
-
-const openai = new OpenAIClient(env);
-
-export default openai;

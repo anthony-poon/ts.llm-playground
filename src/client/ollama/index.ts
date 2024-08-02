@@ -34,7 +34,7 @@ export class OllamaClient implements ChatCompletionClient{
       stream: false,
       options: {
         // https://github.com/ollama/ollama/blob/main/docs/modelfile.md
-        num_ctx: env.WINDOW_SIZE,
+        num_ctx: 4096,
         temperature: 1,   // creativeness; default 0.7
         num_predict: -2,
         top_k: 60,        // low = conservative, high = diverse; default 40
@@ -52,13 +52,9 @@ export class OllamaClient implements ChatCompletionClient{
     const response = await this.client.post<OllamaChatCompletionResponse>("/api/chat", {
       model: this.env.OLLAMA_MODEL || "llama3",
       options: {
-        num_ctx: env.WINDOW_SIZE
+        num_ctx: 4096
       }
     });
     logger.debug('Response', response.data);
   }
 }
-
-const ollama = new OllamaClient(env);
-
-export default ollama;

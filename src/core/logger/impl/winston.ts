@@ -38,17 +38,17 @@ const fileFormat = (namespace: string) => format.combine(
 )
 
 const getTransport = (env: AppEnv, namespace: string) => {
-  if (env.LOG_DEST.toLowerCase() === "none") {
+  if (env.LOGS_TYPE.toLowerCase() === "none") {
     return [];
   }
-  const dest = env.LOG_DEST.split(",");
+  const dest = env.LOGS_TYPE.split(",");
   const rtn = [];
   dest.forEach(d => {
     switch (d.toLowerCase()) {
       case 'file':
         rtn.push(
             new transports.File({
-              filename: path.join(env.LOG_FOLDER, "last_session.log"),
+              filename: path.join(env.LOGS_FOLDER, "last_session.log"),
               format: fileFormat(namespace)
             })
         )
