@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 export interface ChatMessage {
   role: "system"|"user"|"assistant",
   content: string
@@ -5,13 +7,11 @@ export interface ChatMessage {
 
 export class Chat {
   private _prompt: string = "";
+  private _histories: string[] = [];
   private _messages: ChatMessage[] = [];
 
-  addSysMsg = (msg: string) => {
-    this._messages.push({
-      role: "system",
-      content: msg
-    })
+  addHistory = (msg: string) => {
+    this._histories.push(msg);
   }
 
   addUserMsg = (msg: string) => {
@@ -28,17 +28,25 @@ export class Chat {
     })
   }
 
-  undo = (count: number) => {
-    if (count < 0) {
-      throw new Error("Illegal input");
+  undo = () => {
+    let offset = null;
+    for (let i = this._messages.length - 1; i >= 0 && offset === null; i--) {
+      const msg = this._messages[i];
+      if (msg.role === "user") {
+        offset = i;
+      }
     }
-    this._messages = this._messages.slice(0, -count);
+    if (offset !== null) {
+      this._messages = this._messages.slice(0, offset);
+      this._histories = this._histories.slice(0, -1);
+    }
   }
 
   dehydrate = (): string => {
     return JSON.stringify({
       prompt: this._prompt,
-      messages: this._messages
+      messages: this._messages,
+      histories: this._histories,
     });
   }
 
@@ -46,10 +54,15 @@ export class Chat {
     const json = JSON.parse(str);
     this._prompt = json.prompt || '';
     this._messages = json.messages || [];
+    this._histories = json.histories || [];
   }
 
   set prompt(prompt: string) {
     this._prompt = prompt
+  }
+
+  set histories(histories: string[]) {
+    this._histories = histories
   }
 
   get prompt(): string {
@@ -58,5 +71,9 @@ export class Chat {
 
   get messages(): ChatMessage[] {
     return this._messages;
+  }
+
+  get histories(): string[] {
+    return this._histories;
   }
 }

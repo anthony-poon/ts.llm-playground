@@ -37,10 +37,6 @@ export class OpenAIClient implements ChatCompletionClient {
   }
 
   async ping() {
-    // const response = await this.client.chat.completions.create("/api/chat", {
-    //   model: this.env.OPENAI_MODEL || "gpt-4o",
-    //   stream: false,
-    // }) as OpenAI.Chat.ChatCompletion;
-    // logger.debug('Response', response);
+    return; // No need to ping to warm up the endpoint
   }
 }

@@ -52,12 +52,12 @@ const getLogLevel = () => {
 export interface AppEnv {
   APP_ENV: string;
   LOG_LEVEL: string;
-  SESSIONS_FOLDER: string;
   ASSETS_FOLDER: string;
+  SESSIONS_FOLDER: string;
+  PROMPTS_FOLDER: string;
   LOGS_FOLDER: string;
   LOGS_TYPE: string;
   CHAT_COMPLETION_PROVIDER: string;
-  PROMPT_FILE: string
 }
 
 export interface ChatCompletionEnv {
@@ -71,23 +71,29 @@ export interface OpenAIEnv {
 export interface OllamaEnv {
   OLLAMA_BASE_URL: string;
   OLLAMA_MODEL: string;
+  OLLAMA_BASIC_AUTH_USER: string;
+  OLLAMA_BASIC_AUTH_PASS: string;
 }
 
 export interface Env extends AppEnv, OpenAIEnv, OllamaEnv, ChatCompletionEnv {}
 
+const ASSETS_FOLDER = getOrDefault('ASSETS_FOLDER', path.join(__dirname, '../var'))
+
 const env: Env = {
   APP_ENV: getOrDefault('APP_ENV', 'DEV'),
   LOG_LEVEL: getLogLevel(),
-  SESSIONS_FOLDER: getOrDefault('SESSIONS_FOLDER', path.join(__dirname, '../var/sessions')),
-  ASSETS_FOLDER: getOrDefault('ASSETS_FOLDER', path.join(__dirname, '../assets')),
-  LOGS_FOLDER: getOrDefault('LOGS_FOLDER', path.join(__dirname, '../var/logs')),
+  ASSETS_FOLDER,
+  SESSIONS_FOLDER: path.join(ASSETS_FOLDER, 'sessions'),
+  PROMPTS_FOLDER: path.join(ASSETS_FOLDER, 'prompts'),
+  LOGS_FOLDER: path.join(ASSETS_FOLDER, 'logs'),
   CHAT_COMPLETION_PROVIDER: getOrThrow('CHAT_COMPLETION_PROVIDER'),
   LOGS_TYPE: getOrDefault('LOGS_TYPE', 'file'),
-  PROMPT_FILE: getOrDefault('PROMPT_FILE', ''),
   OPENAI_API_KEY: getOrDefault('OPENAI_API_KEY', ''),
   OPENAI_MODEL: getOrDefault('OPENAI_MODEL', ''),
   OLLAMA_BASE_URL: getOrDefault('OLLAMA_BASE_URL', ''),
   OLLAMA_MODEL: getOrDefault('OLLAMA_MODEL', ''),
+  OLLAMA_BASIC_AUTH_USER: getOrDefault('OLLAMA_BASIC_AUTH_USER', ''),
+  OLLAMA_BASIC_AUTH_PASS: getOrDefault('OLLAMA_BASIC_AUTH_PASS', '')
 };
 
 export default env;

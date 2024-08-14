@@ -19,23 +19,21 @@ export class ReadlineIOStream implements IOStream {
     process.stdout.write(chunk)
   }
 
-  async clear() {
-    process.stdout.write('\x1Bc');
+  async writeln(chunk: Buffer | string) {
+    process.stdout.write(chunk);
+    process.stdout.write("\n");
   }
 
-  async print(messages: string[]) {
-    await this.clear();
-    await Promise.all(messages.map(msg => {
-      this.write(msg);
-    }))
+  async clear() {
+    process.stdout.write('\x1Bc');
   }
 }
 
 export interface IOStream {
   write(chunk: Buffer | string): Promise<void>;
+  writeln(chunk: Buffer | string): Promise<void>;
   read(query?: string): Promise<string>;
   clear(): void
-  print(messages: string[]): Promise<void>;
 }
 
 const ioStream = new ReadlineIOStream();
