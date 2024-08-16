@@ -48,6 +48,10 @@ export class CommandHandlerImpl implements CommandHandler {
             case "prompt":
                 await this.prompts(context, args);
                 return;
+            case "h":
+            case "history":
+                await this.history(context, args);
+                return
             default:
                 throw new Error("Invalid command");
 
@@ -123,6 +127,16 @@ export class CommandHandlerImpl implements CommandHandler {
                 });
                 throw new Error("File not found");
             }
+        }
+    }
+
+    private history = async (context: TTYContext, args: string) => {
+        const histories = context.chat.histories;
+        if (histories.length === 0) {
+            await this.ioStream.writeln("History is empty");
+        } else {
+            await this.ioStream.writeln("History:");
+            await this.ioStream.writeln(histories.join("\n"))
         }
     }
 }

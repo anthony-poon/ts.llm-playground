@@ -114,7 +114,7 @@ class TTY {
             "previous summaries and the latest segment of the story. Please create a one line summary that seamlessly flows with " +
             "the earlier summaries. Please provide a concise summary of the following story paragraph, focusing only on the " +
             "factual events and character descriptions. Discard any opinions, interpretations, or non-factual content. " +
-            "The summary should strictly include what happened and describe the characters involved\n";
+            "The summary should strictly include what happened and describe the characters involved. You will write only the summary but nothing else\n";
         story.histories.forEach(h => history.addHistory(h));
         history.addUserMsg(`Please summarise the following: ` + last.content);
         const response = await this.client.chat(toCompletionRequest(history));

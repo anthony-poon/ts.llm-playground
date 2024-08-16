@@ -101,21 +101,6 @@ class LoggerFactoryImpl implements LoggerFactory {
     return createLogger({
       level: this.env.LOG_LEVEL.toLowerCase(),
       levels: LOG_LEVELS,
-      format: format.combine(
-        format.errors({ stack: true }),
-        format.label({ label: namespace }),
-        format((info) => ({
-          ...info,
-          level: info.level.toUpperCase(),
-        }))(),
-        format.timestamp(),
-        format.printf(({ level, message, timestamp, stack }) => {
-          if (stack) {
-            return `[${timestamp}] ${level}: ${message}\n${stack}`;
-          }
-          return `[${timestamp}] ${level}: ${message}`;
-        }),
-      ),
       transports: getTransport(this.env, namespace),
     });
   }
