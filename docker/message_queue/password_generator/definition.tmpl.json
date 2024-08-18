@@ -1,0 +1,30 @@
+{
+  "rabbit_version": "3.9",
+  "users": [
+    {
+      "name": "llm-playground-user",
+      "password_hash": "$RABBITMQ_ADMIN_PASSWORD",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "llm-playground"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "llm-playground-user",
+      "vhost": "llm-playground",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "parameters": [],
+  "policies": [],
+  "queues": [],
+  "exchanges": [],
+  "bindings": []
+}

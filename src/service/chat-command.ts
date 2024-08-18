@@ -1,26 +1,34 @@
-import {TTYContext, CommandHandler} from "@core/tty/index";
-import ioStream, {IOStream} from "@core/stream";
+import fileIO, {FileIO} from "@core/io";
 import env, {AppEnv} from "@env";
 import path from "path";
-import fileIO, {FileIO} from "@core/io";
+import {Chat} from "@core/chat";
 import _ from "lodash";
-import client, {ChatCompletionClient} from "@client/index";
 import fs from "fs";
 import loggerFactory from "@core/logger";
 
 const PROMPT_FILE_REGEX = /^(?!.*\.dist\.txt$).*\.(\*\.txt|txt)$/;
 
-const logger = loggerFactory.create('input-handler');
+export interface ChatCommandContext {
+    done: boolean,
+    repaint: () => void,
+    retry: () => void,
+    write: (msg: string) => void,
+    reset: () => Promise<void>,
+    chat: Chat,
+}
 
-export class CommandHandlerImpl implements CommandHandler {
+export interface ChatCommandService {
+    handle: (command: string, context: ChatCommandContext) => Promise<void>;
+}
+
+const logger = loggerFactory.create('chat-command-service');
+
+class ChatCommandServiceImpl implements ChatCommandService{
     constructor(
-        private readonly client: ChatCompletionClient,
-        private readonly ioStream: IOStream,
         private readonly fileIO: FileIO,
         private readonly env: Pick<AppEnv, "SESSIONS_FOLDER"|"PROMPTS_FOLDER">,
     ) {}
-
-    public async handle(command: string, context: TTYContext) {
+    public handle = async (command: string, context: ChatCommandContext) => {
         const match = command.match(/^\/([a-zA-Z]+) *(.*)/)
         if (!match) {
             throw new Error("Invalid input");
@@ -28,13 +36,15 @@ export class CommandHandlerImpl implements CommandHandler {
         const [, prefix, args] = match;
         switch (prefix) {
             case "exit":
-                context.done();
+                context.done = true;
                 return;
             case "save":
                 await this.save(context, args);
+                await context.write('Chat saved');
                 return;
             case "load":
                 await this.load(context, args);
+                await context.write('Chat loaded');
                 return;
             case "undo":
                 context.chat.undo();
@@ -50,15 +60,21 @@ export class CommandHandlerImpl implements CommandHandler {
                 return;
             case "h":
             case "history":
-                await this.history(context, args);
+                await this.history(context);
                 return
+            case "reset":
+                await context.reset();
+                await context.write('Chat reset');
+                return;
+            case "debug":
+                await context.write(JSON.stringify(context.chat.dehydrate(),null, 4))
+                return;
             default:
-                throw new Error("Invalid command");
-
+                await context.write("Invalid command");
         }
     }
 
-    private save = async (context: TTYContext, args: string) => {
+    private save = async (context: ChatCommandContext, args: string) => {
         let name = "last_session";
         if (args) {
             const match = args.match(/^[0-9a-zA-Z ]+$/);
@@ -71,7 +87,7 @@ export class CommandHandlerImpl implements CommandHandler {
         await this.fileIO.write(path.join(this.env.SESSIONS_FOLDER, `${name}.json`), json);
     }
 
-    private load = async (context: TTYContext, args: string) => {
+    private load = async (context: ChatCommandContext, args: string) => {
         if (args && !args.match(/^([0-9a-zA-Z]+$)/)) {
             throw new Error("Invalid sessions id");
         }
@@ -80,7 +96,7 @@ export class CommandHandlerImpl implements CommandHandler {
         context.chat.hydrate(content.toString());
     }
 
-    private retry = async (context: TTYContext) => {
+    private retry = async (context: ChatCommandContext) => {
         const messages = context.chat.messages;
         const index = _.findLastIndex(messages, msg => msg.role === "user");
         if (index === -1) {
@@ -92,14 +108,14 @@ export class CommandHandlerImpl implements CommandHandler {
         await context.retry();
     }
 
-    // TODO: caching
-    private prompts = async (context: TTYContext, args: string) => {
+    // TODO: caching?
+    private prompts = async (context: ChatCommandContext, args: string) => {
         const files = fs.readdirSync(this.env.PROMPTS_FOLDER)
             .filter(file => file.match(PROMPT_FILE_REGEX))
             .sort()
             .map(file => file.slice(0, -4));
         if (args === "") {
-            files.forEach(file => this.ioStream.writeln(file));
+            files.forEach(file => context.write(file));
             return;
         } else {
             const match = args.match(/(\d+)$/);
@@ -120,7 +136,7 @@ export class CommandHandlerImpl implements CommandHandler {
             try {
                 const content = await this.fileIO.read(path.join(this.env.PROMPTS_FOLDER, `${fileName}.txt`));
                 context.chat.prompt = content.toString();
-                await this.ioStream.writeln("Prompt loaded.");
+                await context.write("Prompt loaded.");
             } catch (e) {
                 logger.info('Unable to read prompts', {
                     error: e
@@ -130,17 +146,17 @@ export class CommandHandlerImpl implements CommandHandler {
         }
     }
 
-    private history = async (context: TTYContext, args: string) => {
+    private history = async (context: ChatCommandContext) => {
         const histories = context.chat.histories;
         if (histories.length === 0) {
-            await this.ioStream.writeln("History is empty");
+            await context.write("History is empty");
         } else {
-            await this.ioStream.writeln("History:");
-            await this.ioStream.writeln(histories.join("\n"))
+            await context.write("History:");
+            await context.write(histories.join("\n"))
         }
     }
 }
 
-const inputHandler = new CommandHandlerImpl(client, ioStream, fileIO, env);
+const chatCommandService = new ChatCommandServiceImpl(fileIO, env);
 
-export default inputHandler;
+export default chatCommandService

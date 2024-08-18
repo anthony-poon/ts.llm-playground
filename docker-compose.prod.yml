@@ -1,0 +1,13 @@
+version: '3'
+services:
+  database:
+    restart: always
+
+  message_queue:
+    restart: always
+
+  web:
+    restart: always
+
+  worker:
+    restart: always

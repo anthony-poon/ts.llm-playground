@@ -1,83 +1,23 @@
 import {Chat, ChatMessage} from "@core/chat";
-import commandHandler, {CommandHandlerImpl} from "@core/tty/command-handler";
 import ioStream, {IOStream} from "@core/stream";
-import client, {ChatCompletionClient, ChatCompletionRequest} from "@client/index";
-
-const toCompletionRequest = (chat: Chat) => {
-    const prompt = chat.prompt;
-    const messages = [];
-    if (prompt) {
-        messages.push({
-            role: "system",
-            content: prompt
-        })
-    }
-    if (chat.histories.length > 0) {
-        const history = `History of the story so far:\n` + chat.histories.join("\n");
-        messages.push({
-            role: "system",
-            content: history
-        })
-    }
-    if (chat.messages.length > 0) {
-        messages.push(...chat.messages);
-    }
-    return {
-        messages,
-    } as ChatCompletionRequest;
-}
+import llmClient, {LLMClient} from "@client/llm";
+import chatCommandService, {ChatCommandContext, ChatCommandService} from "@service/chat-command";
 
 const formatMsg = (msg: ChatMessage) => {
     return `\x1b[33m[${msg.role}]: \x1b[37m${msg.content}`;
 }
 
-export interface CommandHandler {
-    handle: (command: string, context: TTYContext) => Promise<void>;
-}
-
-export class TTYContext {
-    private _isDone: boolean = false;
-    constructor(
-        private readonly _chat: Chat,
-        private readonly ioStream: IOStream,
-        private readonly retryHandler: (chat: Chat) => Promise<void>
-    ) {}
-
-    done = () => {
-        this._isDone = true;
-    }
-
-    repaint = () => {
-        this.ioStream.clear();
-        this._chat.messages
-            .map(msg => formatMsg(msg))
-            .forEach(msg => this.ioStream.writeln(msg))
-    }
-
-    retry = () => {
-        return this.retryHandler(this._chat)
-    }
-
-    get isDone(): boolean {
-        return this._isDone;
-    }
-
-    get chat(): Chat {
-        return this._chat;
-    }
-}
-
 class TTY {
     constructor(
-        private readonly cmd: CommandHandlerImpl,
+        private readonly cmd: ChatCommandService,
         private readonly ioStream: IOStream,
-        private readonly client: ChatCompletionClient,
+        private readonly client: LLMClient,
     ) {}
     start = async (chat: Chat) => {
         await this.client.ping();
         let context
         do {
-            context = new TTYContext(chat, this.ioStream, this.handleRequest);
+            context = this.createContext(chat);
             try {
                 const input = (await this.ioStream.read(">> ")).trim();
                 if (!input.startsWith("/")) {
@@ -89,14 +29,13 @@ class TTY {
             } catch (e) {
                 await this.ioStream.writeln((e as Error).message);
             }
-        } while (!context.isDone);
+        } while (!context.done);
     }
 
     private handleRequest = async (chat: Chat) => {
-        const request = toCompletionRequest(chat);
-        const response = await this.client.chat(request);
+        const response = await this.client.chat(chat);
         chat.addAssistantMsg(response.message);
-        await this.handleHistory(chat);
+        // await this.handleHistory(chat);
         await this.ioStream.clear();
         await chat.messages
             .map(msg => formatMsg(msg))
@@ -117,11 +56,30 @@ class TTY {
             "The summary should strictly include what happened and describe the characters involved. You will write only the summary but nothing else\n";
         story.histories.forEach(h => history.addHistory(h));
         history.addUserMsg(`Please summarise the following: ` + last.content);
-        const response = await this.client.chat(toCompletionRequest(history));
+        const response = await this.client.chat(history);
         story.addHistory(response.message);
+    }
+
+    private createContext = (chat: Chat): ChatCommandContext => {
+        return {
+            done: false,
+            repaint: async () => {
+                this.ioStream.clear();
+                chat.messages
+                    .map(msg => formatMsg(msg))
+                    .forEach(msg => this.ioStream.writeln(msg))
+            },
+            retry: async () => await this.handleRequest(chat),
+            write: async (msg: string) => await this.ioStream.writeln(msg),
+            reset: async () => {
+                chat.clear();
+                this.ioStream.clear();
+            },
+            chat
+        }
     }
 }
 
-const tty = new TTY(commandHandler, ioStream, client);
+const tty = new TTY(chatCommandService, ioStream, llmClient);
 
 export default tty;

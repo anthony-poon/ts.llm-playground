@@ -76,4 +76,10 @@ export class Chat {
   get histories(): string[] {
     return this._histories;
   }
+
+  clear() {
+    this._prompt = "";
+    this._messages = [];
+    this._histories = [];
+  }
 }

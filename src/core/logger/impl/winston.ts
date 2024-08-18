@@ -13,11 +13,11 @@ const consoleFormat = (namespace: string) => format.combine(
     }))(),
     format.timestamp(),
     format.colorize(),
-    format.printf(({ level, message, timestamp, stack }) => {
+    format.printf(({ level, message, timestamp, stack, label }) => {
       if (stack) {
-        return `[${timestamp}] ${level}: ${message}\n${stack}`;
+        return `[${timestamp}] ${level} (${label}): ${message}\n${stack}`;
       }
-      return `[${timestamp}] ${level}: ${message}`;
+      return `[${timestamp}] ${level} (${label}): ${message}`;
     }),
 )
 
@@ -29,11 +29,11 @@ const fileFormat = (namespace: string) => format.combine(
       level: info.level.toUpperCase(),
     }))(),
     format.timestamp(),
-    format.printf(({ level, message, timestamp, stack }) => {
+    format.printf(({ level, message, timestamp, stack, label }) => {
       if (stack) {
-        return `[${timestamp}] ${level}: ${message}\n${stack}`;
+          return `[${timestamp}] ${level} (${label}): ${message}\n${stack}`;
       }
-      return `[${timestamp}] ${level}: ${message}`;
+        return `[${timestamp}] ${level} (${label}): ${message}`;
     }),
 )
 
@@ -81,6 +81,7 @@ class LoggerFactoryImpl implements LoggerFactory {
       alert: (msgOrObj: string|object, context?: object) => this.log(namespace, 'alert', msgOrObj, context),
       info: (msgOrObj: string|object, context?: object) => this.log(namespace, 'info', msgOrObj, context),
       debug: (msgOrObj: string|object, context?: object) => this.log(namespace, 'debug', msgOrObj, context),
+      silly: (msgOrObj: string|object, context?: object) => this.log(namespace, 'silly', msgOrObj, context),
     };
   }
 

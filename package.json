@@ -7,20 +7,29 @@
     "test": "jest",
     "build": "rm -rf ./dist && tsc && tsc-alias",
     "formatter": "eslint --fix . ",
-    "start": "ts-node src/index"
+    "dev:start": "ts-node src/index",
+    "dev:serve": "ts-node src/bin/www",
+    "dev:worker:telegram-queue": "ts-node src/bin/worker/telegram-queue-worker"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/joi": "^17.2.3",
+    "amqplib": "^0.10.4",
     "axios": "^1.7.2",
     "commander": "^12.1.0",
     "dotenv": "^16.0.3",
     "eslint": "^9.7.0",
+    "express": "^4.19.2",
+    "joi": "^17.13.3",
     "lodash": "^4.17.21",
     "luxon": "^3.4.4",
     "openai": "^4.52.7",
+    "pg": "^8.12.0",
     "prettier": "^3.3.3",
-    "winston": "^3.13.1"
+    "typeorm": "^0.3.20",
+    "winston": "^3.13.1",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@babel/core": "^7.24.9",
@@ -30,6 +39,7 @@
     "@eslint/eslintrc": "^3.1.0",
     "@eslint/js": "^9.7.0",
     "@tsconfig/node18": "^1.0.1",
+    "@types/amqplib": "^0.10.5",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.0",
     "@types/lodash": "^4.17.7",

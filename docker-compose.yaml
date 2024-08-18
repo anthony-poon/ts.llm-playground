@@ -1,8 +1,48 @@
 version: '3'
 services:
-  ollama:
-    image: ollama/ollama
-    volumes:
-      - "./var/ollama:/root/.ollama"
+  database:
+    image: postgres
     ports:
-      - '11434:11434'
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  message_queue:
+    build:
+      context: ./docker/message_queue
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  mq_worker:
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    command: ["node", "dist/bin/worker/index"]
+    volumes:
+      - ./var:/app/var
+    env_file:
+      - ./.env
+
+  web:
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    ports:
+      - "8080:8080"
+    command: ["node", "dist/bin/www"]
+    volumes:
+      - ./var:/app/var
+    env_file:
+      - ./.env
+
+
+volumes:
+  postgres_data:
+  rabbitmq_data:

@@ -15,6 +15,7 @@ export interface Logger {
   alert: LoggerMethod;
   info: LoggerMethod;
   debug: LoggerMethod;
+  silly: LoggerMethod;
 }
 
 const loggerFactory: LoggerFactory = new WinstonLoggerFactory(env);

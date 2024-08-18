@@ -8,8 +8,14 @@
     "paths": {
       "@core/*": ["core/*"],
       "@client/*": ["client/*"],
-      "@env": ["env.ts"]
-    }
+      "@service/*": ["service/*"],
+      "@entity/*": ["database/entity/*"],
+      "@repository/*": ["database/repository/*"],
+      "@env": ["env.ts"],
+      "@database": ["database"]
+    },
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true
   },
   "extends": "@tsconfig/node18/tsconfig.json",
   "ts-node": {

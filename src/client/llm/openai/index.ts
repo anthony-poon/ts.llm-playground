@@ -1,11 +1,12 @@
 import OpenAI from 'openai';
-import env, { Env, OpenAIEnv } from '@env';
+import { OpenAIEnv } from '@env';
 import loggerFactory from '@core/logger';
-import { ChatCompletionClient, ChatCompletionRequest, ChatCompletionResponse } from '@client/index';
+import {LLMClient, ChatCompletionRequest, ChatCompletionResponse, toCompletionRequest} from '@client/llm';
+import {Chat} from "@core/chat";
 
 const logger = loggerFactory.create('open-ai-client');
 
-export class OpenAIClient implements ChatCompletionClient {
+export class OpenAIClient implements LLMClient {
   private readonly client;
   private readonly env;
 
@@ -19,7 +20,8 @@ export class OpenAIClient implements ChatCompletionClient {
     this.env = env;
   }
 
-  async chat(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
+  async chat(chat: Chat): Promise<ChatCompletionResponse> {
+    const request = toCompletionRequest(chat);
     logger.debug('Request', request);
     const response = await this.client.chat.completions.create({
       ...request,

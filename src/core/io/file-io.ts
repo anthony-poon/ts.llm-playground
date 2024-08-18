@@ -17,7 +17,7 @@ export class LocalFileIO implements FileIO {
     if (!this.isSubDir(pathToFile)) {
       throw new Error("Illegal file access");
     }
-    return fs.readFileSync(pathToFile);
+    return Promise.resolve(fs.readFileSync(pathToFile));
   }
 
   private isSubDir = (pathToFile: string) => {
