@@ -1,4 +1,4 @@
-FROM ubuntu as builder
+FROM ubuntu AS builder
 RUN apt update
 RUN apt-get -y install xxd gettext-base dos2unix
 COPY ./password_generator/password_hash.sh /opt/password_hash.sh

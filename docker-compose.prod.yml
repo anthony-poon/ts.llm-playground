@@ -1,4 +1,3 @@
-version: '3'
 services:
   database:
     restart: always
@@ -9,5 +8,5 @@ services:
   web:
     restart: always
 
-  worker:
+  mq_worker:
     restart: always
