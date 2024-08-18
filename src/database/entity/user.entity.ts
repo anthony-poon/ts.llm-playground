@@ -28,6 +28,14 @@ export class UserEntity {
 
     @Column({
         type: 'varchar',
+        length: 256,
+        nullable: true
+    })
+    username?: string|null;
+
+
+    @Column({
+        type: 'varchar',
         length: 8,
         nullable: true
     })

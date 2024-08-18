@@ -15,6 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/joi": "^17.2.3",
+    "@types/luxon": "^3.4.2",
     "amqplib": "^0.10.4",
     "axios": "^1.7.2",
     "commander": "^12.1.0",

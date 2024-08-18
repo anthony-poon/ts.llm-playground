@@ -1,25 +1,26 @@
-import express from 'express';
+import express, {NextFunction, Request, Response} from 'express';
 import loggerFactory from "@core/logger";
-import initializationAction from "./action/initialization";
+import initialization from "./middleware/initialization";
 import {WebhookSchema} from "./type/request";
-import mqAction from "./action/message-queue";
+import messageQueue from "./middleware/message-queue";
 
 const webhookRouter = express.Router();
 
 const logger = loggerFactory.create("webhook-router");
 
-webhookRouter.post("/", async (req, res, next) => {
-    try {
-        const webhook = WebhookSchema.parse(req.body);
-        await initializationAction.onRequest(webhook);
-        await mqAction.publish(webhook);
-        res.json({
-            status: "ok"
-        })
-    } catch (e) {
-        next(e);
-    }
-
-})
+webhookRouter.post("/", (req: Request, res: Response, next: NextFunction) => {
+        try {
+            req.payload = WebhookSchema.parse(req.body);
+            res.json({
+                status: "ok"
+            });
+            next()
+        } catch (e) {
+            next(e);
+        }
+    },
+    initialization.onRequest,
+    messageQueue.publish,
+)
 
 export default webhookRouter;

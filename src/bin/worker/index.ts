@@ -1,8 +1,9 @@
+
+
 import database from "@database";
 import mqClient from "@client/mq";
 import env from "@env";
 import telegramQueueWorker from "./telegram-queue-worker";
-
 
 (async () => {
     await database.initialize();

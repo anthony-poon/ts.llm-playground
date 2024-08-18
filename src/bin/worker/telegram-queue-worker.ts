@@ -9,6 +9,7 @@ import {WebhookRequest} from "../../http/route/webhook/type/request";
 import chatCommandService, {ChatCommandContext, ChatCommandService} from "@service/chat-command";
 import chatRepository, {ChatRepository} from "@repository/chat-repository";
 import database from "@database";
+import {ChatLockEntity} from "@entity/chat-lock.entity";
 
 const logger = loggerFactory.create('telegram-queue-worker');
 
@@ -17,45 +18,64 @@ export class TelegramQueueWorker {
         private readonly llmClient: LLMClient,
         private readonly telegramClient: TelegramClient,
         private readonly chatRepository: ChatRepository,
-        private readonly chatCommandService: ChatCommandService,
+        private readonly commands: ChatCommandService,
     ) {}
 
     public handle = async (msg: string, context: MQContext) => {
-        const request = JSON.parse(msg) as WebhookRequest;
         try {
-            let chatEntity = await this.chatRepository.findOneBy({
-                remoteId: request.message.chat.id
-            });
-            const chat = new Chat();
-            if (chatEntity && chatEntity.json) {
-                chat.hydrate(JSON.stringify(chatEntity.json));
-            } else {
-                chatEntity = new ChatEntity();
-                chatEntity.remoteId = request.message.chat.id
-                chatEntity.json = JSON.parse(chat.dehydrate());
-                await this.chatRepository.save(chatEntity);
-            }
+            const request = JSON.parse(msg) as WebhookRequest;
+            const { entity, chat } = await this.getEntityAndChat(request);
+            await this.handleWithEntityAndChat(request, entity, chat);
+        } catch (e) {
+            // Might fail without the needed data for a reply, thus we cannot call this.reply or release msg lock
+            const error = (e as Error);
+            const msg = `Error: ${error.message}`;
+            logger.error(msg);
+        } finally {
+            context.ack();
+        }
+    }
+
+    // handling  with ChatEntity and Chat already established so that we can reply if an error is raised
+    public handleWithEntityAndChat = async (request: WebhookRequest, entity: ChatEntity, chat: Chat) => {
+        try {
             const content = request.message.text;
             if (!content.startsWith("/")) {
                 await this.handleChat(request, chat);
             } else {
-                const context = this.createContext(request, chat, chatEntity);
-                await this.chatCommandService.handle(content, context)
+                const context = this.createContext(request, chat, entity);
+                await this.commands.handle(content, context)
             }
-            chatEntity.json = JSON.parse(chat.dehydrate());
-            logger.debug('json', {
-                "json": chatEntity.json
-            });
-            await this.chatRepository.save(chatEntity)
         } catch (e) {
             const error = (e as Error);
             const msg = `Error: ${error.message}`;
             logger.error(msg)
             await this.reply(request, msg);
         } finally {
-            context.ack();
+            await this.updateEntityAndReleaseLock(entity, chat);
         }
+    }
 
+    private getEntityAndChat = async (request: WebhookRequest) => {
+        let entity = await this.chatRepository.findOneBy({
+            remoteId: request.message.chat.id
+        });
+        const chat = new Chat();
+        if (!entity || !entity.json){
+            entity = ChatEntity.getNewChat(request.message.chat.id, {
+                ttl: 60,
+                chat,
+            });
+            await this.chatRepository.save(entity);
+        }
+        chat.hydrate(JSON.stringify(entity.json));
+        return { entity, chat };
+    }
+
+    private updateEntityAndReleaseLock = async (entity: ChatEntity, chat: Chat) => {
+        entity.json = JSON.parse(chat.dehydrate());
+        entity.lock!.expireAt = null;
+        await this.chatRepository.save(entity)
     }
 
     private createContext = (request: WebhookRequest, chat: Chat, chatEntity: ChatEntity): ChatCommandContext => {

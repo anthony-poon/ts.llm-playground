@@ -40,11 +40,11 @@ class ChatCommandServiceImpl implements ChatCommandService{
                 return;
             case "save":
                 await this.save(context, args);
-                await context.write('Chat saved');
+                context.write('Chat saved');
                 return;
             case "load":
                 await this.load(context, args);
-                await context.write('Chat loaded');
+                context.write('Chat loaded');
                 return;
             case "undo":
                 context.chat.undo();
@@ -64,13 +64,13 @@ class ChatCommandServiceImpl implements ChatCommandService{
                 return
             case "reset":
                 await context.reset();
-                await context.write('Chat reset');
+                context.write('Chat reset');
                 return;
             case "debug":
-                await context.write(JSON.stringify(context.chat.dehydrate(),null, 4))
+                context.write(JSON.stringify(context.chat.dehydrate(),null, 4))
                 return;
             default:
-                await context.write("Invalid command");
+                context.write("Invalid command");
         }
     }
 
@@ -115,7 +115,8 @@ class ChatCommandServiceImpl implements ChatCommandService{
             .sort()
             .map(file => file.slice(0, -4));
         if (args === "") {
-            files.forEach(file => context.write(file));
+            const msg = files.join("\n");
+            context.write(msg);
             return;
         } else {
             const match = args.match(/(\d+)$/);

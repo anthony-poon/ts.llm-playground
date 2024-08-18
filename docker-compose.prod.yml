@@ -7,6 +7,24 @@ services:
 
   web:
     restart: always
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    ports:
+      - "8080:8080"
+    command: ["node", "dist/bin/www"]
+    volumes:
+      - ./var:/app/var
+    env_file:
+      - ./.env
 
   mq_worker:
     restart: always
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    command: ["node", "dist/bin/worker/index"]
+    volumes:
+      - ./var:/app/var
+    env_file:
+      - ./.env

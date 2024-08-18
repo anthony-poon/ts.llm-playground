@@ -32,11 +32,11 @@ export class OllamaClient implements LLMClient{
       stream: false,
       options: {
         // https://github.com/ollama/ollama/blob/main/docs/modelfile.md
-        repeat_last_n: -1,
-        repeat_penalty: 1.5,
-        num_ctx: 16384,
+        // repeat_last_n: -1,
+        // repeat_penalty: 1.5,
+        // num_ctx: 16384,
         // temperature: 1.2,   // creativeness; default 0.7
-        num_predict: -2,
+        // num_predict: -2,
         // top_k: 80,        // low = conservative, high = diverse; default 40
         // top_p: 1.2,       // low = conservative, high = diverse; default 0.9
         // min_p: 0.05      // ensure p value not too low; default 0
