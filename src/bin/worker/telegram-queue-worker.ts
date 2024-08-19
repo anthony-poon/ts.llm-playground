@@ -82,7 +82,7 @@ export class TelegramQueueWorker {
         return {
             done: false,
             repaint: () => {}, // Not sure if we can repaint in telegram,
-            retry: async () => await this.handleChat(request, chat),
+            retry: async () => await this.handleRetry(request, chat),
             write: async (msg: string) => await this.reply(request, msg),
             reset: async () => {
                 await this.chatRepository.remove(chatEntity);
@@ -94,6 +94,20 @@ export class TelegramQueueWorker {
 
     private handleChat = async (request: WebhookRequest, chat: Chat) => {
         chat.addUserMsg(request.message.text);
+        const response = await this.llmClient.chat(chat);
+        if (!response.message) {
+            logger.alert('Response from LLM client is empty');
+            await this.telegramClient.sendMessage({
+                chat_id: request.message.chat.id,
+                text: '**Error: LLM engine return empty content**',
+            })
+            return;
+        }
+        chat.addAssistantMsg(response.message);
+        await this.reply(request, response.message)
+    }
+
+    private handleRetry = async (request: WebhookRequest, chat: Chat) => {
         const response = await this.llmClient.chat(chat);
         if (!response.message) {
             logger.alert('Response from LLM client is empty');
