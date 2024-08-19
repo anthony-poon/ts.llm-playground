@@ -207,7 +207,7 @@ class ChatCommandServiceImpl implements ChatCommandService{
     }
 
     private debug(context: ChatCommandContext, args: string) {
-        const message = context.chat.messages.map(msg => msg.slice(0, 100));
+        const message = context.chat.messages.map(msg => msg.content.slice(0, 100));
         context.write(JSON.stringify({
             prompt: context.chat.prompt,
             story: context.chat.story,
