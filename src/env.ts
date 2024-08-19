@@ -94,6 +94,7 @@ export interface TelegramEnv {
   TELEGRAM_BOT_USERNAME: string;
   TELEGRAM_BOT_TOKEN: string;
   TELEGRAM_BOT_WEBHOOK_URL: string;
+  TELEGRAM_MAX_TEXT_LENGTH: number;
 }
 
 
@@ -140,6 +141,7 @@ const env: Env = {
   TELEGRAM_BOT_USERNAME: getOrDefault('TELEGRAM_BOT_USERNAME', ''),
   TELEGRAM_BOT_TOKEN: getOrDefault('TELEGRAM_BOT_TOKEN', ''),
   TELEGRAM_BOT_WEBHOOK_URL: getOrDefault('TELEGRAM_BOT_WEBHOOK_URL', ''),
+  TELEGRAM_MAX_TEXT_LENGTH: parseInt(getOrDefault('TELEGRAM_BATCH_LENGTH', '4000')),
   DB_HOST: getOrThrow('DB_HOST'),
   DB_PORT: parseInt(getOrDefault('DB_PORT', '5432'), 10),
   DB_USER: getOrThrow('DB_USER'),

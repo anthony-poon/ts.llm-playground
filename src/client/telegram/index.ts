@@ -2,15 +2,15 @@ import {AxiosInstance} from "axios";
 import env, {TelegramEnv} from "@env";
 import loggerFactory from "@core/logger";
 import httpClient from "@client/http";
-import {SendMessageClientRequest} from "@client/telegram/type";
-import _ from "lodash";
 
 const API_BASE_URL = "https://api.telegram.org"
 
 const logger = loggerFactory.create("telegram-client")
 
-
-
+export interface SendMessageClientRequest {
+    chat_id: number,
+    text: string,
+}
 
 export class TelegramClient {
     constructor(
@@ -37,7 +37,7 @@ export class TelegramClient {
             return;
         }
         logger.debug("Calling setWebhook endpoint");
-        const chunks = request.text.match(/.{1,4000}/g); // Split into size of 4000
+        const chunks = this.textToChunk(request.text); // Split into size of 4000
         // Cannot use Promise.all, must be in order
         for (const chunk of chunks!) {
             await this.axios.post(this.getFullPath("sendMessage"), {
@@ -49,6 +49,37 @@ export class TelegramClient {
 
     private getFullPath = (path: string) => {
         return API_BASE_URL + `/bot${this.env.TELEGRAM_BOT_TOKEN}/${path}`
+    }
+
+    private textToChunk = (text: string) => {
+        const size = this.env.TELEGRAM_MAX_TEXT_LENGTH || 4000;
+        const rtn = [];
+        let trimmed = text.trim();
+        while (trimmed.length > 0) {
+            let end = size;
+            if (end >= trimmed.length) {   // Push the remaining
+                rtn.push(trimmed);
+                break;
+            }
+            let space = this.lastIndexOfAny([' ', '\n', '\r'], trimmed, end);
+            if (space === -1) {
+                space = end;  // This means we split at maxChunkSize, even if it splits a word
+            }
+            rtn.push(trimmed.slice(0, space).trim());
+            trimmed = trimmed.slice(space).trim()
+        }
+        return rtn;
+    }
+
+    private lastIndexOfAny(needles: string[], arr: string, end: number) {
+        let last = -1;
+        for (let i = 0; i < needles.length; i++) {
+            const index = arr.lastIndexOf(needles[i], end);
+            if (index > last) {
+                last = index;
+            }
+        }
+        return last;
     }
 }
 
