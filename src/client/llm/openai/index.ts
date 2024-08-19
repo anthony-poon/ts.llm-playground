@@ -41,4 +41,8 @@ export class OpenAIClient implements LLMClient {
   async ping() {
     return; // No need to ping to warm up the endpoint
   }
+
+  public getModels() {
+    return Promise.resolve(null);
+  }
 }

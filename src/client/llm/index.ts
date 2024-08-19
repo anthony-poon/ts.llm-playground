@@ -1,4 +1,4 @@
-import env from "@env";
+import env, {AppEnv} from "@env";
 import {OllamaClient} from "@client/llm/ollama";
 import {OpenAIClient} from "@client/llm/openai";
 import {MockClient} from "@client/llm/mock";
@@ -8,6 +8,7 @@ import {Chat} from "@core/chat";
 export interface LLMClient {
   chat: (request: Chat) => Promise<ChatCompletionResponse>
   ping: () => Promise<void>
+  getModels: () => Promise<ListModelResponse|null>
 }
 
 export interface ChatCompletionRequest {
@@ -21,6 +22,8 @@ export interface ChatCompletionResponse {
   message: string;
 }
 
+type ListModelResponse = string[]
+
 export const toCompletionRequest = (chat: Chat) => {
   const prompt = chat.prompt;
   const messages = [];
@@ -28,6 +31,12 @@ export const toCompletionRequest = (chat: Chat) => {
     messages.push({
       role: "system",
       content: prompt
+    })
+  }
+  if (chat.story) {
+    messages.push({
+      role: "system",
+      content: "The story setting is as follow: " + chat.story + "\n"
     })
   }
   if (chat.histories.length > 0) {

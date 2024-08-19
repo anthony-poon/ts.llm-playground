@@ -14,6 +14,12 @@ interface OllamaChatCompletionResponse {
   }
 }
 
+interface OllamaListModelsResponse {
+  models: {
+    name: string,
+  } & Record<string, any>[] ;
+}
+
 
 export class OllamaClient implements LLMClient{
   constructor(
@@ -28,7 +34,7 @@ export class OllamaClient implements LLMClient{
     const request = toCompletionRequest(chat);
     const response = await this.client.post<OllamaChatCompletionResponse>("/api/chat", {
       ...request,
-      model: this.env.OLLAMA_MODEL || "llama3",
+      model: chat.model || this.env.OLLAMA_MODEL || "llama3",
       stream: false,
       options: {
         // https://github.com/ollama/ollama/blob/main/docs/modelfile.md
@@ -65,5 +71,10 @@ export class OllamaClient implements LLMClient{
         password: this.env.OLLAMA_BASIC_AUTH_PASS
       }
     }
+  }
+
+  getModels = async () => {
+    const response = await this.client.get<OllamaListModelsResponse>("/api/tags", { ...this.getConfig() });
+    return response.data.models.map(m => m.name);
   }
 }

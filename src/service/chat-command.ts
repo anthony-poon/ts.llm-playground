@@ -5,6 +5,7 @@ import {Chat} from "@core/chat";
 import _ from "lodash";
 import fs from "fs";
 import loggerFactory from "@core/logger";
+import llmClient, {LLMClient} from "@client/llm";
 
 const PROMPT_FILE_REGEX = /^(?!.*\.dist\.txt$).*\.(\*\.txt|txt)$/;
 
@@ -26,6 +27,7 @@ const logger = loggerFactory.create('chat-command-service');
 class ChatCommandServiceImpl implements ChatCommandService{
     constructor(
         private readonly fileIO: FileIO,
+        private readonly llmClient: LLMClient,
         private readonly env: Pick<AppEnv, "SESSIONS_FOLDER"|"PROMPTS_FOLDER">,
     ) {}
     public handle = async (command: string, context: ChatCommandContext) => {
@@ -67,7 +69,16 @@ class ChatCommandServiceImpl implements ChatCommandService{
                 context.write('Chat reset');
                 return;
             case "debug":
-                context.write(JSON.stringify(context.chat.dehydrate(),null, 4))
+                this.debug(context, args);
+                return;
+            case "s":
+            case "story":
+                this.story(context, args);
+                return;
+            case "m":
+            case "model":
+            case "models":
+                await this.model(context, args);
                 return;
             default:
                 context.write("Invalid command");
@@ -115,16 +126,14 @@ class ChatCommandServiceImpl implements ChatCommandService{
             .sort()
             .map(file => file.slice(0, -4));
         if (args === "") {
-            const msg = files.join("\n");
-            context.write(msg);
+            context.write(this.printArray(files));
             return;
         } else {
             const match = args.match(/(\d+)$/);
             let fileName;
             if (match) {
                 const offset = parseInt(match[1], 10);
-                // User input is 1 based
-                fileName = files[offset - 1];
+                fileName = files[offset];
                 if (!fileName) {
                     throw new Error("Invalid prompt offset");
                 }
@@ -150,14 +159,63 @@ class ChatCommandServiceImpl implements ChatCommandService{
     private history = async (context: ChatCommandContext) => {
         const histories = context.chat.histories;
         if (histories.length === 0) {
-            await context.write("History is empty");
+            context.write("History is empty");
         } else {
-            await context.write("History:");
-            await context.write(histories.join("\n"))
+            context.write("History:");
+            context.write(histories.join("\n"))
         }
+    }
+
+    private story(context: ChatCommandContext, args: string) {
+        if (args.length === 0) {
+            return;
+        }
+        context.chat.story = args;
+    }
+
+    private model = async (context: ChatCommandContext, args: string) => {
+        const models = await this.llmClient.getModels();
+        if (!models || models.length === 0) {
+            context.write("No models available.");
+            return;
+        }
+        if (args.length === 0) {
+            context.write(this.printArray(models));
+            return;
+        }
+        const match = args.match(/(\d+)$/);
+        let selected;
+        if (match) {
+            const offset = parseInt(match[1], 10);
+            selected = models[offset]
+        } else {
+            selected = args;
+        }
+        if (!selected || !models.includes(selected)) {
+            context.write("Invalid models selected");
+            return;
+        }
+        context.chat.model = selected;
+        context.write("Model selected.");
+    }
+
+    private printArray = (arr: string[]) => {
+        let offset = 0;
+        let rtn = "";
+        arr.forEach(a => rtn += (offset++) + ". " + a + "\n");
+        return rtn;
+    }
+
+    private debug(context: ChatCommandContext, args: string) {
+        const message = context.chat.messages.map(msg => msg.slice(0, 100));
+        context.write(JSON.stringify({
+            prompt: context.chat.prompt,
+            story: context.chat.story,
+            message
+        }, null, 4))
     }
 }
 
-const chatCommandService = new ChatCommandServiceImpl(fileIO, env);
+const chatCommandService = new ChatCommandServiceImpl(fileIO, llmClient, env);
 
 export default chatCommandService

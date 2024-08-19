@@ -11,4 +11,8 @@ export class MockClient implements LLMClient {
     async ping(): Promise<void> {
         return;
     }
+
+    public getModels() {
+        return Promise.resolve(null);
+    }
 }

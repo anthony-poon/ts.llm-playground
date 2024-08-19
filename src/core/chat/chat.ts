@@ -6,7 +6,9 @@ export interface ChatMessage {
 }
 
 export class Chat {
-  private _prompt: string = "";
+  public prompt: string = "";
+  public story: string = "";
+  public model: string|null = null;
   private _histories: string[] = [];
   private _messages: ChatMessage[] = [];
 
@@ -44,7 +46,9 @@ export class Chat {
 
   dehydrate = (): string => {
     return JSON.stringify({
-      prompt: this._prompt,
+      prompt: this.prompt,
+      story: this.story,
+      model: this.model,
       messages: this._messages,
       histories: this._histories,
     });
@@ -52,21 +56,15 @@ export class Chat {
 
   hydrate = (str: string) => {
     const json = JSON.parse(str);
-    this._prompt = json.prompt || '';
+    this.prompt = json.prompt || '';
+    this.story = json.story || '';
+    this.model = json.model || '';
     this._messages = json.messages || [];
     this._histories = json.histories || [];
   }
 
-  set prompt(prompt: string) {
-    this._prompt = prompt
-  }
-
   set histories(histories: string[]) {
     this._histories = histories
-  }
-
-  get prompt(): string {
-    return this._prompt;
   }
 
   get messages(): ChatMessage[] {
@@ -78,7 +76,9 @@ export class Chat {
   }
 
   clear() {
-    this._prompt = "";
+    this.prompt = "";
+    this.story = "";
+    this.model = null;
     this._messages = [];
     this._histories = [];
   }
