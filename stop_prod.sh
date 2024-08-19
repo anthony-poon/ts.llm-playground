@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker c  ompose down
+docker compose down --remove-orphans
