@@ -3,8 +3,10 @@ import env from '@env';
 import Buffer from "node:buffer"
 
 export interface FileIO {
-  write(pathToFile: string|string[], content: any): Promise<void>
-  read(pathToFile: string|string[]): Promise<Buffer>
+  write(pathToFile: string, content: any): Promise<void>
+  read(pathToFile: string): Promise<Buffer>,
+  mkdir(pathToFolder: string): boolean,
+  ls(pathToFile: string): string[],
 }
 
 const fileIO = new LocalFileIO(env);

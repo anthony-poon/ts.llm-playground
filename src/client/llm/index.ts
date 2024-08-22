@@ -4,6 +4,7 @@ import {OpenAIClient} from "@client/llm/openai";
 import {MockClient} from "@client/llm/mock";
 import httpClient from "@client/http";
 import {Chat} from "@core/chat";
+import loggerFactory from "@core/logger";
 
 export interface LLMClient {
   chat: (request: Chat) => Promise<ChatCompletionResponse>
@@ -23,6 +24,8 @@ export interface ChatCompletionResponse {
 }
 
 type ListModelResponse = string[]
+
+const logger = loggerFactory.create('llm-provider');
 
 export const toCompletionRequest = (chat: Chat) => {
   const prompt = chat.prompt;
@@ -54,19 +57,36 @@ export const toCompletionRequest = (chat: Chat) => {
   } as ChatCompletionRequest;
 }
 
-let llmClient: LLMClient;
-switch (env.LLM_PROVIDER) {
-  case "ollama":
-    llmClient = new OllamaClient(httpClient, env);
-    break;
-  case "openai":
-    llmClient = new OpenAIClient(env);
-    break;
-  case "mock":
-    llmClient = new MockClient();
-    break;
-  default:
-    throw new Error("Invalid chat completion provider");
+interface LLMProviderMapping {
+  [key: string]: () => LLMClient;
 }
 
-export default llmClient;
+export class LLMProvider {
+  constructor(
+      private readonly mapping: LLMProviderMapping,
+      private readonly env: Pick<AppEnv, "LLM_PROVIDER">
+  ) {}
+
+  public getDefaultClient = (): LLMClient => {
+    return this.getClient(this.env.LLM_PROVIDER);
+  }
+
+  public getClient = (provider: string): LLMClient => {
+    const factory = this.mapping[provider] ?? null;
+    if (!factory) {
+      logger.error('Invalid provider', {
+        provider
+      })
+      throw new Error("Invalid provider name");
+    }
+    return factory();
+  }
+}
+
+const llmProvider = new LLMProvider({
+  openai: () => new OpenAIClient(env),
+  ollama: () => new OllamaClient(httpClient, env),
+  mock: () => new MockClient()
+}, env)
+
+export default llmProvider;

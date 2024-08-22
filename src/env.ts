@@ -100,6 +100,10 @@ export interface TelegramBotEnv {
   USERNAME: string;
   TOKEN: string;
   WEBHOOK_URL: string;
+  PROVIDER: string;
+  PROMPTS_FOLDER: string;
+  SESSIONS_FOLDER: string;
+  USER_WHITELIST: string[];
 }
 
 export interface DatabaseEnv {
@@ -130,11 +134,17 @@ const getTelegramEnv = (): TelegramEnv => {
   const namespaces = env ? env.split(",") : [];
   const TELEGRAM_BOTS = namespaces.map(namespace => {
     const NAMESPACE = namespace.trim().toUpperCase();
+    const USER_WHITELIST = getOrDefault(`TELEGRAM_${NAMESPACE}_BOT_USER_WHITELIST`, '');
+    const whitelist = USER_WHITELIST ? USER_WHITELIST.split(",") : [];
     return {
       NAMESPACE: namespace.trim().toLowerCase(),
       USERNAME: getOrThrow(`TELEGRAM_${NAMESPACE}_BOT_USERNAME`),
       TOKEN: getOrThrow(`TELEGRAM_${NAMESPACE}_BOT_TOKEN`),
       WEBHOOK_URL: getOrThrow(`TELEGRAM_${NAMESPACE}_BOT_WEBHOOK_URL`),
+      PROVIDER: getOrThrow(`TELEGRAM_${NAMESPACE}_BOT_PROVIDER`),
+      PROMPTS_FOLDER: getOrDefault(`TELEGRAM_${NAMESPACE}_BOT_PROMPTS_FOLDER`, ''),
+      SESSIONS_FOLDER: getOrDefault(`TELEGRAM_${NAMESPACE}_BOT_SESSIONS_FOLDER`, ''),
+      USER_WHITELIST: whitelist,
     }
   })
   return {

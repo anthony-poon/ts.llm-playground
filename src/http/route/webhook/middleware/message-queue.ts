@@ -8,6 +8,7 @@ import {DateTime} from "luxon";
 import telegramClient, {TelegramClient} from "@client/telegram";
 import {NextFunction, Request, Response} from "express";
 import { WebhookPayload } from '../webhook';
+import {TelegramQueueWorkerMessage} from "../../../../bin/worker/telegram-queue-worker";
 
 class MessageQueue {
     constructor(
@@ -29,16 +30,21 @@ class MessageQueue {
         if (this.isLockValid(chat.lock)) {
             chat.lock!.expireAt = DateTime.now().plus({ second: 60 }).toJSDate();
             await this.chatRepository.save(chat);
-            const json = JSON.stringify(req.payload);
+            const json = this.format(req.payload);
             await this.mqClient.connect();
             await this.mqClient.publish(this.env.TG_MESSAGE_QUEUE, json);
         } else {
             await this.telegramClient.sendMessage({
-                chat_id: req.payload.message.chat.id,
+                chat_id: payload.request.message.chat.id,
                 text: "A message already in queue. Please wait",
                 namespace: payload.namespace
             })
         }
+    }
+
+    // Just to ensure TelegramQueueWorkerMessage = WebhookPayload. if not, do a conversion
+    private format = (payload: TelegramQueueWorkerMessage) => {
+        return JSON.stringify(payload)
     }
 
     private initChat = async (req: WebhookRequest) => {

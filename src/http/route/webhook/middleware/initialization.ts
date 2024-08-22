@@ -4,6 +4,7 @@ import loggerFactory from "@core/logger";
 import telegramClient, {TelegramClient} from "@client/telegram";
 import {NextFunction, Request, Response} from "express";
 import { WebhookPayload } from '../webhook';
+import env, {TelegramEnv} from "@env";
 
 const logger = loggerFactory.create('initialization-action')
 
@@ -11,14 +12,23 @@ class Initialization {
     constructor(
         private readonly userRepository: UserRepository,
         private readonly telegramClient: TelegramClient,
+        private readonly env: TelegramEnv,
     ) {
     }
 
-    // Maybe should make it into a middleware so that I can call next or not call next?
     public onRequest = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const payload = req.payload as WebhookPayload;
             const user = payload.request.message.from;
+            const botEnv = this.getBotEnvByNamespace(payload.namespace);
+            if (botEnv.USER_WHITELIST.length > 0 && (!user.username || !botEnv.USER_WHITELIST.includes(user.username))) {
+                await this.telegramClient.sendMessage({
+                    chat_id: payload.request.message.chat.id,
+                    text: "Access Denied.",
+                    namespace: payload.namespace
+                })
+                return;
+            }
             const upserted = await this.userRepository.upsertByRemoteId({
                 remoteId: user.id,
                 username: user.username,
@@ -31,7 +41,7 @@ class Initialization {
             const allowed = upserted.isAllowed;
             if (!allowed) {
                 await this.telegramClient.sendMessage({
-                    chat_id: req.payload.message.chat.id,
+                    chat_id: payload.request.message.chat.id,
                     text: "Your account have been disabled.",
                     namespace: payload.namespace
                 })
@@ -42,8 +52,16 @@ class Initialization {
             next(e)
         }
     }
+
+    private getBotEnvByNamespace(namespace: string) {
+        const botEnv = this.env.TELEGRAM_BOTS.find((botEnv) => botEnv.NAMESPACE.toUpperCase() === namespace.toUpperCase());
+        if (!botEnv) {
+            throw new Error("Invalid bot namespace");
+        }
+        return botEnv;
+    }
 }
 
-const initialization = new Initialization(userRepository, telegramClient);
+const initialization = new Initialization(userRepository, telegramClient, env);
 
 export default initialization;

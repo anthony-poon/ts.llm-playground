@@ -13,6 +13,13 @@ export interface SendMessageClientRequest {
     namespace: string
 }
 
+export interface SetMenuButtonRequest {
+    chat_id?: number|null;
+    menu_button: {
+        type: "command",
+    }
+}
+
 export class TelegramClient {
     constructor(
         private readonly axios: AxiosInstance,

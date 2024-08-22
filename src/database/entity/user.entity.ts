@@ -6,7 +6,8 @@ export class UserEntity {
     id?: number;
 
     @Column({
-        type: 'int',
+        type: 'varchar',
+        length: 32,
         nullable: false,
         unique: true,
     })

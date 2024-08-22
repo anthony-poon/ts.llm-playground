@@ -1,11 +1,9 @@
 import fileIO, {FileIO} from "@core/io";
-import env, {AppEnv} from "@env";
 import path from "path";
 import {Chat} from "@core/chat";
 import _ from "lodash";
-import fs from "fs";
 import loggerFactory from "@core/logger";
-import llmClient, {LLMClient} from "@client/llm";
+import llmProvider, {LLMProvider} from "@client/llm";
 
 const PROMPT_FILE_REGEX = /^(?!.*\.dist\.txt$).*\.(\*\.txt|txt)$/;
 
@@ -16,6 +14,9 @@ export interface ChatCommandContext {
     write: (msg: string) => void,
     reset: () => Promise<void>,
     chat: Chat,
+    provider: string,
+    pathToPrompts: string,
+    pathToSessions: string,
 }
 
 export interface ChatCommandService {
@@ -27,8 +28,7 @@ const logger = loggerFactory.create('chat-command-service');
 class ChatCommandServiceImpl implements ChatCommandService{
     constructor(
         private readonly fileIO: FileIO,
-        private readonly llmClient: LLMClient,
-        private readonly env: Pick<AppEnv, "SESSIONS_FOLDER"|"PROMPTS_FOLDER">,
+        private readonly llmProvider: LLMProvider,
     ) {}
     public handle = async (command: string, context: ChatCommandContext) => {
         const match = command.match(/^\/([a-zA-Z]+) *(.*)/)
@@ -95,7 +95,8 @@ class ChatCommandServiceImpl implements ChatCommandService{
             name = match[0];
         }
         const json = context.chat.dehydrate();
-        await this.fileIO.write(path.join(this.env.SESSIONS_FOLDER, `${name}.json`), json);
+        this.fileIO.mkdir(context.pathToSessions);
+        await this.fileIO.write(path.join(context.pathToSessions, `${name}.json`), json);
     }
 
     private load = async (context: ChatCommandContext, args: string) => {
@@ -103,7 +104,7 @@ class ChatCommandServiceImpl implements ChatCommandService{
             throw new Error("Invalid sessions id");
         }
         const name = args ? args : "last_session";
-        const content = await this.fileIO.read(path.join(this.env.SESSIONS_FOLDER, `${name}.json`));
+        const content = await this.fileIO.read(path.join(context.pathToSessions, `${name}.json`));
         context.chat.hydrate(content.toString());
     }
 
@@ -121,10 +122,15 @@ class ChatCommandServiceImpl implements ChatCommandService{
 
     // TODO: caching?
     private prompts = async (context: ChatCommandContext, args: string) => {
-        const files = fs.readdirSync(this.env.PROMPTS_FOLDER)
+        const folder = context.pathToPrompts;
+        this.fileIO.mkdir(folder);
+        const files = this.fileIO.ls(context.pathToPrompts)
             .filter(file => file.match(PROMPT_FILE_REGEX))
-            .sort()
             .map(file => file.slice(0, -4));
+        if (!files || files.length === 0) {
+            context.write("No prompt available.");
+            return;
+        }
         if (args === "") {
             context.write(this.printArray(files));
             return;
@@ -144,7 +150,7 @@ class ChatCommandServiceImpl implements ChatCommandService{
                 fileName = args;
             }
             try {
-                const content = await this.fileIO.read(path.join(this.env.PROMPTS_FOLDER, `${fileName}.txt`));
+                const content = await this.fileIO.read(path.join(context.pathToPrompts, `${fileName}.txt`));
                 context.chat.prompt = content.toString();
                 await context.write("Prompt loaded.");
             } catch (e) {
@@ -174,7 +180,8 @@ class ChatCommandServiceImpl implements ChatCommandService{
     }
 
     private model = async (context: ChatCommandContext, args: string) => {
-        const models = await this.llmClient.getModels();
+        const client = this.llmProvider.getClient(context.provider)
+        const models = await client.getModels();
         if (!models || models.length === 0) {
             context.write("No models available.");
             return;
@@ -216,6 +223,6 @@ class ChatCommandServiceImpl implements ChatCommandService{
     }
 }
 
-const chatCommandService = new ChatCommandServiceImpl(fileIO, llmClient, env);
+const chatCommandService = new ChatCommandServiceImpl(fileIO, llmProvider);
 
 export default chatCommandService

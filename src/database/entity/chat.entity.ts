@@ -22,7 +22,8 @@ export class ChatEntity {
     id?: number;
 
     @Column({
-        type: 'int',
+        type: 'varchar',
+        length: 32,
         nullable: false,
         unique: true,
     })
