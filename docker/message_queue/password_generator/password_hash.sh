@@ -12,7 +12,7 @@ function encode_password() {
     echo "$PASS"
 }
 
-#shellcheck source=./password.conf
+#shellcheck source=./.env
 source "$PASSWORD_PATH"
 RABBITMQ_ADMIN_PASSWORD=$(encode_password "${RABBITMQ_ADMIN_PASSWORD}")
 export RABBITMQ_ADMIN_PASSWORD

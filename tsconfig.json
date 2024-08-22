@@ -27,6 +27,6 @@
     "jest.config.ts",
     "node_modules",
     "dist",
-    "src/**/*.test.ts"
+    "src/**/*.spec.ts"
   ]
 }
