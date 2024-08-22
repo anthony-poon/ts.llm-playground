@@ -15,8 +15,8 @@ services:
     command: ["node", "dist/bin/www"]
     volumes:
       - ./var:/app/var
-    environment:
-      NODE_ENV: prod
+    env_file:
+      - ./.env
 
   mq_worker:
     restart: always
@@ -26,5 +26,5 @@ services:
     command: ["node", "dist/bin/worker/index"]
     volumes:
       - ./var:/app/var
-    environment:
-      NODE_ENV: prod
+    env_file:
+      - ./.env
