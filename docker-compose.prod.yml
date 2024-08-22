@@ -5,7 +5,7 @@ services:
   message_queue:
     restart: always
 
-  web:
+  web_sandbox:
     restart: always
     build:
       context: .
@@ -16,9 +16,35 @@ services:
     volumes:
       - ./var:/app/var
     env_file:
-      - ./.env
+      - ./.env.sandbox
 
-  mq_worker:
+  web_mock:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    ports:
+      - "8080:8081"
+    command: [ "node", "dist/bin/www" ]
+    volumes:
+      - ./var:/app/var
+    env_file:
+      - ./.env.mock
+
+  web_demo:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    ports:
+      - "8080:8082"
+    command: [ "node", "dist/bin/www" ]
+    volumes:
+      - ./var:/app/var
+    env_file:
+      - ./.env.demo
+
+  mq_worker_sandbox:
     restart: always
     build:
       context: .
@@ -27,4 +53,26 @@ services:
     volumes:
       - ./var:/app/var
     env_file:
-      - ./.env
+      - ./.env.sandbox
+
+  mq_worker_mock:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    command: [ "node", "dist/bin/worker/index" ]
+    volumes:
+      - ./var:/app/var
+    env_file:
+      - ./.env.mock
+
+  mq_worker_demo:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    command: [ "node", "dist/bin/worker/index" ]
+    volumes:
+      - ./var:/app/var
+    env_file:
+      - ./.env.demo

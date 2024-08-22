@@ -1,1 +1,6 @@
-password.conf
+.env
+.env.*.conf
+definition.tmpl.json
+definition.tmpl.*.json
+!definition.tmpl.dist.json
+!.env.dist.conf

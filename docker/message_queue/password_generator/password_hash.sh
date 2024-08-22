@@ -15,7 +15,19 @@ function encode_password() {
 #shellcheck source=./password.conf
 source "$PASSWORD_PATH"
 RABBITMQ_ADMIN_PASSWORD=$(encode_password "${RABBITMQ_ADMIN_PASSWORD}")
-
 export RABBITMQ_ADMIN_PASSWORD
+
+for var in $(printenv | grep -oP '^RABBITMQ_ADMIN_.*_PASSWORD(?==)'); do
+  # Access the value of the environment variable
+  value=$(eval echo \$$var)
+
+  # Perform actions with the variable and its value
+  echo "Processing $var with value: $value"
+
+  # Example action: check if the value is set or empty
+  if [ -z "$value" ]; then
+    export $var="$value"
+  fi
+done
 
 envsubst < "$SOURCE_PATH" > "$DEST_PATH"

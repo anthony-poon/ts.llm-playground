@@ -1,5 +1,5 @@
 {
-  "rabbit_version": "3.9",
+  "rabbit_version": "3.13",
   "users": [
     {
       "name": "llm-playground-user",
