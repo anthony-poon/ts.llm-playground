@@ -7,6 +7,7 @@ import {ChatLockEntity} from "@entity/chat-lock.entity";
 import {DateTime} from "luxon";
 import telegramClient, {TelegramClient} from "@client/telegram";
 import {NextFunction, Request, Response} from "express";
+import { WebhookPayload } from '../webhook';
 
 class MessageQueue {
     constructor(
@@ -18,11 +19,12 @@ class MessageQueue {
     }
 
     public publish = async (req: Request, res: Response, next: NextFunction) => {
+        const payload = req.payload as WebhookPayload;
         let chat = await this.chatRepository.findOneBy({
-            remoteId: req.payload.message.chat.id,
+            remoteId: payload.request.message.chat.id,
         })
         if (!chat) {
-            chat = await this.initChat(req.payload);
+            chat = await this.initChat(payload.request);
         }
         if (this.isLockValid(chat.lock)) {
             chat.lock!.expireAt = DateTime.now().plus({ second: 60 }).toJSDate();
@@ -34,6 +36,7 @@ class MessageQueue {
             await this.telegramClient.sendMessage({
                 chat_id: req.payload.message.chat.id,
                 text: "A message already in queue. Please wait",
+                namespace: payload.namespace
             })
         }
     }

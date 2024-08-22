@@ -1,5 +1,5 @@
 import {AxiosInstance} from "axios";
-import env, {TelegramEnv} from "@env";
+import env, { TelegramBotEnv, TelegramEnv } from '@env';
 import loggerFactory from "@core/logger";
 import httpClient from "@client/http";
 
@@ -10,28 +10,30 @@ const logger = loggerFactory.create("telegram-client")
 export interface SendMessageClientRequest {
     chat_id: number,
     text: string,
+    namespace: string
 }
 
 export class TelegramClient {
     constructor(
         private readonly axios: AxiosInstance,
         private readonly env: TelegramEnv,
-    ) {
-       if (!env.TELEGRAM_BOT_WEBHOOK_URL || !env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_BOT_USERNAME) {
-           throw new Error("Missing required environment variable")
-       }
-    }
+    ) {}
 
     // https://core.telegram.org/bots/api#setwebhook
-    public setWebhook = async () => {
-        logger.debug("Calling setWebhook endpoint");
-        await this.axios.post(this.getFullPath('setWebhook'), {
-            url: this.env.TELEGRAM_BOT_WEBHOOK_URL
-        });
+    public setAllWebhook = async () => {
+        await Promise.all(this.env.TELEGRAM_BOTS.map((botEnv) => {
+            this.axios.post(this.getFullPath(botEnv, 'setWebhook'), {
+                url: botEnv.WEBHOOK_URL
+            })
+        }));
         return true;
     }
 
     public sendMessage = async (request: SendMessageClientRequest) => {
+        const botEnv = this.getBotEnvByNamespace(request.namespace);
+        if (!botEnv) {
+            throw new Error("Invalid Telegram bot namespace")
+        }
         if (request.text.length === 0) {
             logger.debug("Skipped setWebhook endpoint. Reason: 0 length input");
             return;
@@ -40,15 +42,15 @@ export class TelegramClient {
         const chunks = this.textToChunk(request.text); // Split into size of 4000
         // Cannot use Promise.all, must be in order
         for (const chunk of chunks!) {
-            await this.axios.post(this.getFullPath("sendMessage"), {
+            await this.axios.post(this.getFullPath(botEnv, "sendMessage"), {
                 ...request,
                 text: chunk
             });
         }
     }
 
-    private getFullPath = (path: string) => {
-        return API_BASE_URL + `/bot${this.env.TELEGRAM_BOT_TOKEN}/${path}`
+    private getFullPath = (botEnv: TelegramBotEnv, path: string) => {
+        return API_BASE_URL + `/bot${botEnv.TOKEN}/${path}`
     }
 
     private textToChunk = (text: string) => {
@@ -80,6 +82,10 @@ export class TelegramClient {
             }
         }
         return last;
+    }
+
+    private getBotEnvByNamespace(namespace: string) {
+        return this.env.TELEGRAM_BOTS.find((botEnv) => botEnv.NAMESPACE.toUpperCase() === namespace.toUpperCase());
     }
 }
 

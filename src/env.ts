@@ -91,12 +91,16 @@ export interface HttpEnv {
 }
 
 export interface TelegramEnv {
-  TELEGRAM_BOT_USERNAME: string;
-  TELEGRAM_BOT_TOKEN: string;
-  TELEGRAM_BOT_WEBHOOK_URL: string;
   TELEGRAM_MAX_TEXT_LENGTH: number;
+  TELEGRAM_BOTS: TelegramBotEnv[];
 }
 
+export interface TelegramBotEnv {
+  NAMESPACE: string;
+  USERNAME: string;
+  TOKEN: string;
+  WEBHOOK_URL: string;
+}
 
 export interface DatabaseEnv {
   DB_HOST: string;
@@ -121,6 +125,24 @@ export interface Env extends AppEnv, OpenAIEnv, OllamaEnv, ChatCompletionEnv, Ht
 
 const ASSETS_FOLDER = getOrDefault('ASSETS_FOLDER', path.join(__dirname, '../var'))
 
+const getTelegramEnv = (): TelegramEnv => {
+  const env = getOrDefault('TELEGRAM_BOT_NAMESPACES', '');
+  const namespaces = env ? env.split(",") : [];
+  const TELEGRAM_BOTS = namespaces.map(namespace => {
+    const NAMESPACE = namespace.trim().toUpperCase();
+    return {
+      NAMESPACE: namespace.trim().toLowerCase(),
+      USERNAME: getOrThrow(`TELEGRAM_${NAMESPACE}_BOT_USERNAME`),
+      TOKEN: getOrThrow(`TELEGRAM_${NAMESPACE}_BOT_TOKEN`),
+      WEBHOOK_URL: getOrThrow(`TELEGRAM_${NAMESPACE}_BOT_WEBHOOK_URL`),
+    }
+  })
+  return {
+    TELEGRAM_MAX_TEXT_LENGTH: parseInt(getOrDefault('TELEGRAM_BATCH_LENGTH', '4000')),
+    TELEGRAM_BOTS
+  };
+}
+
 const env: Env = {
   IP_ADDRESS: getOrDefault('IP_ADDRESS', '127.0.0.1'),
   PORT: parseInt(getOrDefault('PORT', '8080'), 10),
@@ -138,10 +160,6 @@ const env: Env = {
   OLLAMA_MODEL: getOrDefault('OLLAMA_MODEL', ''),
   OLLAMA_BASIC_AUTH_USER: getOrDefault('OLLAMA_BASIC_AUTH_USER', ''),
   OLLAMA_BASIC_AUTH_PASS: getOrDefault('OLLAMA_BASIC_AUTH_PASS', ''),
-  TELEGRAM_BOT_USERNAME: getOrDefault('TELEGRAM_BOT_USERNAME', ''),
-  TELEGRAM_BOT_TOKEN: getOrDefault('TELEGRAM_BOT_TOKEN', ''),
-  TELEGRAM_BOT_WEBHOOK_URL: getOrDefault('TELEGRAM_BOT_WEBHOOK_URL', ''),
-  TELEGRAM_MAX_TEXT_LENGTH: parseInt(getOrDefault('TELEGRAM_BATCH_LENGTH', '4000')),
   DB_HOST: getOrThrow('DB_HOST'),
   DB_PORT: parseInt(getOrDefault('DB_PORT', '5432'), 10),
   DB_USER: getOrThrow('DB_USER'),
@@ -154,7 +172,8 @@ const env: Env = {
   MQ_USERNAME: getOrDefault('MQ_USERNAME', ''),
   MQ_PASSWORD: getOrDefault('MQ_PASSWORD', ''),
   MQ_VHOST: getOrDefault('MQ_VHOST', ''),
-  TG_MESSAGE_QUEUE: getOrDefault('TG_MESSAGE_QUEUE', 'TG_MESSAGE_QUEUE')
+  TG_MESSAGE_QUEUE: getOrDefault('TG_MESSAGE_QUEUE', 'TG_MESSAGE_QUEUE'),
+  ...getTelegramEnv()
 };
 
 export default env;

@@ -1,7 +1,7 @@
-import env, {ChatCompletionEnv, OllamaEnv} from '@env';
+import {ChatCompletionEnv, OllamaEnv} from '@env';
 import loggerFactory from '@core/logger';
-import {LLMClient, ChatCompletionRequest, ChatCompletionResponse, toCompletionRequest} from '@client/llm';
-import axios, { AxiosInstance } from "axios"
+import {LLMClient, ChatCompletionResponse, toCompletionRequest} from '@client/llm';
+import { AxiosInstance } from "axios"
 import {Chat} from "@core/chat";
 const logger = loggerFactory.create('ollama-client');
 

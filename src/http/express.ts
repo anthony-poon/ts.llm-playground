@@ -38,7 +38,7 @@ class ExpressHttp {
 
   private boostrap = async () => {
     try {
-      await telegramClient.setWebhook();
+      await telegramClient.setAllWebhook();
     } catch (e) {
       logger.error('Unable to run bootstrap', {
         error: (e as Error).message
