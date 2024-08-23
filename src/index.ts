@@ -2,7 +2,7 @@ import { Chat } from '@core/chat';
 import process from 'process';
 import fs from 'fs';
 import loggerFactory from "@core/logger";
-import tty from "@core/tty";
+import tty from "./tty";
 import { program } from "commander"
 
 const logger = loggerFactory.create('main');
