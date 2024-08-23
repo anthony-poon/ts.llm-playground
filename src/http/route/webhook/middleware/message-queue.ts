@@ -8,7 +8,7 @@ import {DateTime} from "luxon";
 import telegramClient, {TelegramClient} from "@client/telegram";
 import {NextFunction, Request, Response} from "express";
 import { WebhookPayload } from '../webhook';
-import {TelegramQueueWorkerMessage} from "../../../../bin/worker/telegram-queue-worker";
+import {TelegramWorkerMessage} from "../../../../worker/telegram-worker";
 
 class MessageQueue {
     constructor(
@@ -21,11 +21,19 @@ class MessageQueue {
 
     public publish = async (req: Request, res: Response, next: NextFunction) => {
         const payload = req.payload as WebhookPayload;
+        const remoteId = `${payload.request.message.chat.id}`
         let chat = await this.chatRepository.findOneBy({
-            remoteId: payload.request.message.chat.id,
+            namespace: payload.namespace,
+            remoteId,
         })
         if (!chat) {
-            chat = await this.initChat(payload.request);
+            const userId = `${payload.user?.id!}`
+            chat = ChatEntity.getNewChat({
+                namespace: payload.namespace,
+                remoteId,
+                userId,
+            });
+            await this.chatRepository.save(chat);
         }
         if (this.isLockValid(chat.lock)) {
             chat.lock!.expireAt = DateTime.now().plus({ second: 60 }).toJSDate();
@@ -43,14 +51,8 @@ class MessageQueue {
     }
 
     // Just to ensure TelegramQueueWorkerMessage = WebhookPayload. if not, do a conversion
-    private format = (payload: TelegramQueueWorkerMessage) => {
+    private format = (payload: TelegramWorkerMessage) => {
         return JSON.stringify(payload)
-    }
-
-    private initChat = async (req: WebhookRequest) => {
-        const chat = ChatEntity.getNewChat(req.message.chat.id)
-        await this.chatRepository.save(chat);
-        return chat;
     }
 
     private isLockValid = (lock?: ChatLockEntity) => {

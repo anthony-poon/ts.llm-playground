@@ -4,31 +4,33 @@ import llmProvider, {LLMProvider} from "@client/llm";
 import telegramClient, {TelegramClient} from "@client/telegram";
 import {Chat} from "@core/chat";
 import {ChatEntity} from "@entity/chat.entity";
-import {WebhookRequest} from "../../http/route/webhook/type/request";
-import chatCommandService, {ChatCommandContext, ChatCommandService} from "@service/chat-command";
+import telegramCommand, {TelegramCommand} from "./telegram-command";
 import chatRepository, {ChatRepository} from "@repository/chat-repository";
-import env, {AppEnv, TelegramEnv} from "@env";
-import path from "path";
+import env, { AppEnv, TelegramBotEnv, TelegramEnv } from '@env';
+import { TelegramCommandContext } from './telegram-command';
+import { WebhookRequest } from '../http/route/webhook/type/request';
 
 const logger = loggerFactory.create('telegram-queue-worker');
 
-export interface TelegramQueueWorkerMessage {
+export interface TelegramWorkerMessage {
     namespace: string;
     request: WebhookRequest
+
+    sendRequest: (chat: Chat) => Promise<void>
 }
 
-export class TelegramQueueWorker {
+export class TelegramWorker {
     constructor(
         private readonly llmProvider: LLMProvider,
         private readonly telegramClient: TelegramClient,
         private readonly chatRepository: ChatRepository,
-        private readonly commands: ChatCommandService,
+        private readonly commands: TelegramCommand,
         private readonly env: TelegramEnv & Pick<AppEnv, "SESSIONS_FOLDER"|"PROMPTS_FOLDER">,
     ) {}
 
     public handle = async (msg: string, context: MQContext) => {
         try {
-            const request = JSON.parse(msg) as TelegramQueueWorkerMessage;
+            const request = JSON.parse(msg) as TelegramWorkerMessage;
             const { entity, chat } = await this.getEntityAndChat(request);
             await this.handleWithEntityAndChat(request, entity, chat);
         } catch (e) {
@@ -42,13 +44,15 @@ export class TelegramQueueWorker {
     }
 
     // handling  with ChatEntity and Chat already established so that we can reply if an error is raised
-    public handleWithEntityAndChat = async (message: TelegramQueueWorkerMessage, entity: ChatEntity, chat: Chat) => {
+    public handleWithEntityAndChat = async (message: TelegramWorkerMessage, entity: ChatEntity, chat: Chat) => {
         try {
             const content = message.request.message.text;
+            const botEnv = this.getBotEnv(message);
             if (!content.startsWith("/")) {
-                await this.handleChat(message, chat);
+                chat.addUserMsg(message.request.message.text);
+                await this.sendRequest(message, chat, botEnv);
             } else {
-                const context = this.createContext(message, chat, entity);
+                const context = this.createContext(message, chat, botEnv);
                 await this.commands.handle(content, context)
             }
         } catch (e) {
@@ -61,13 +65,18 @@ export class TelegramQueueWorker {
         }
     }
 
-    private getEntityAndChat = async (message: TelegramQueueWorkerMessage) => {
+    private getEntityAndChat = async (message: TelegramWorkerMessage) => {
+        const remoteId = `${message.request.message.chat.id}`;
         let entity = await this.chatRepository.findOneBy({
-            remoteId: message.request.message.chat.id
+            namespace: message.namespace,
+            remoteId
         });
         const chat = new Chat();
         if (!entity || !entity.json){
-            entity = ChatEntity.getNewChat(message.request.message.chat.id, {
+            entity = ChatEntity.getNewChat({
+                namespace: message.namespace,
+                userId: message.request.message.from.id.toString(),
+                remoteId: message.request.message.chat.id.toString(),
                 ttl: 60,
                 chat,
             });
@@ -83,34 +92,19 @@ export class TelegramQueueWorker {
         await this.chatRepository.save(entity)
     }
 
-    private createContext = (message: TelegramQueueWorkerMessage, chat: Chat, chatEntity: ChatEntity): ChatCommandContext => {
-        const botEnv = this.getBotEnv(message);
-        const chatId = message.request.message.chat.id;
-        const userId = message.request.message.from.id;
-        const pathToSessions = botEnv.SESSIONS_FOLDER || path.join(this.env.SESSIONS_FOLDER, botEnv.NAMESPACE);
+    private createContext = (message: TelegramWorkerMessage, chat: Chat, botEnv: TelegramBotEnv): TelegramCommandContext => {
+        const client = this.llmProvider.getClient(botEnv.PROVIDER)
         return {
             done: false,
-            repaint: () => {}, // Not sure if we can repaint in telegram,
-            retry: async () => await this.llmExchange(message, chat),
-            write: async (msg: string) => await this.telegramReply(message, msg),
-            reset: async () => {
-                await this.chatRepository.remove(chatEntity);
-                chat.clear();
-            },
+            reply: async (msg: string) => await this.telegramReply(message, msg),
             chat,
-            provider: botEnv.PROVIDER,
-            pathToPrompts: botEnv.PROMPTS_FOLDER || path.join(this.env.PROMPTS_FOLDER, botEnv.NAMESPACE),
-            pathToSessions: path.join(pathToSessions, `chat_${userId}_${chatId}`)
+            env: botEnv,
+            client: client,
+            sendRequest: async (chat: Chat) => await this.sendRequest(message, chat, botEnv),
         }
     }
 
-    private handleChat = async (message: TelegramQueueWorkerMessage, chat: Chat) => {
-        chat.addUserMsg(message.request.message.text);
-        await this.llmExchange(message, chat);
-    }
-
-    private llmExchange = async (message: TelegramQueueWorkerMessage, chat: Chat) => {
-        const botEnv = this.getBotEnv(message);
+    private sendRequest = async (message: TelegramWorkerMessage, chat: Chat, botEnv: TelegramBotEnv) => {
         const client = this.llmProvider.getClient(botEnv.PROVIDER);
         const response = await client.chat(chat);
         if (!response.message) {
@@ -122,7 +116,7 @@ export class TelegramQueueWorker {
         await this.telegramReply(message, response.message)
     }
 
-    private telegramReply = async (message: TelegramQueueWorkerMessage, text: string) => {
+    private telegramReply = async (message: TelegramWorkerMessage, text: string) => {
         await this.telegramClient.sendMessage({
             chat_id: message.request.message.chat.id,
             text,
@@ -130,7 +124,7 @@ export class TelegramQueueWorker {
         })
     }
 
-    private getBotEnv = (message: TelegramQueueWorkerMessage) => {
+    private getBotEnv = (message: TelegramWorkerMessage) => {
         const provider = this.env.TELEGRAM_BOTS.find(({ NAMESPACE }) => message.namespace.toLowerCase() === NAMESPACE)
         if (!provider) {
             throw new Error(`Cannot find provider by name ${provider}`);
@@ -139,11 +133,11 @@ export class TelegramQueueWorker {
     }
 }
 
-const telegramQueueWorker = new TelegramQueueWorker(
+const telegramQueueWorker = new TelegramWorker(
     llmProvider,
     telegramClient,
     chatRepository,
-    chatCommandService,
+    telegramCommand,
     env,
 )
 

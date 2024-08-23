@@ -1,7 +1,7 @@
 import express, {NextFunction, Request, Response} from 'express';
 import loggerFactory from "@core/logger";
 import initialization from "./middleware/initialization";
-import { WebhookRequest, WebhookSchema } from './type/request';
+import { UserRequest, WebhookRequest, WebhookSchema } from './type/request';
 import messageQueue from "./middleware/message-queue";
 import env from '@env';
 
@@ -12,6 +12,7 @@ const logger = loggerFactory.create("webhook-router");
 export interface WebhookPayload {
   namespace: string,
   request: WebhookRequest,
+  user: UserRequest|null,
 }
 
 webhookRouter.post("/:namespace", (req: Request, res: Response, next: NextFunction) => {
@@ -24,7 +25,8 @@ webhookRouter.post("/:namespace", (req: Request, res: Response, next: NextFuncti
       }
       req.payload = {
         namespace,
-        request: WebhookSchema.parse(req.body)
+        request: WebhookSchema.parse(req.body),
+        user: null
       } as WebhookPayload;
       res.json({
           status: "ok"

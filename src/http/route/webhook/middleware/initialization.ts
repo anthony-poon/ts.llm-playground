@@ -30,7 +30,8 @@ class Initialization {
                 return;
             }
             const upserted = await this.userRepository.upsertByRemoteId({
-                remoteId: user.id,
+                namespace: payload.namespace,
+                remoteId: `${user.id}`,
                 username: user.username,
                 firstName: user.first_name,
                 lastName: user.last_name,
@@ -46,6 +47,7 @@ class Initialization {
                     namespace: payload.namespace
                 })
             } else {
+                req.payload.user = upserted
                 next();
             }
         } catch (e) {

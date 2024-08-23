@@ -9,7 +9,7 @@
     "formatter": "eslint --fix . ",
     "dev:start": "ts-node src/index",
     "dev:serve": "ts-node src/bin/www",
-    "dev:worker:telegram-queue": "ts-node src/bin/worker/telegram-queue-worker"
+    "dev:worker:telegram-queue": "ts-node src/bin/telegram"
   },
   "author": "",
   "license": "ISC",

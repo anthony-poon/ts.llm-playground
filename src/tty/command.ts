@@ -3,34 +3,29 @@ import path from "path";
 import {Chat} from "@core/chat";
 import _ from "lodash";
 import loggerFactory from "@core/logger";
-import llmProvider, {LLMProvider} from "@client/llm";
+import llmProvider, { LLMClient, LLMProvider } from '@client/llm';
+import env, { AppEnv } from '@env';
+import ioStream, { IOStream } from './io-stream';
+import { formatMsg, sendRequest } from './index';
 
 const PROMPT_FILE_REGEX = /^(?!.*\.dist\.txt$).*\.(\*\.txt|txt)$/;
 
-export interface ChatCommandContext {
+export interface TTYCommandContext {
     done: boolean,
-    repaint: () => void,
-    retry: () => void,
-    write: (msg: string) => void,
-    reset: () => Promise<void>,
     chat: Chat,
-    provider: string,
-    pathToPrompts: string,
-    pathToSessions: string,
+    sendRequest: (chat: Chat) => Promise<void>,
+    client: LLMClient,
 }
 
-export interface ChatCommandService {
-    handle: (command: string, context: ChatCommandContext) => Promise<void>;
-}
+const logger = loggerFactory.create('tty-command');
 
-const logger = loggerFactory.create('chat-command-service');
-
-class ChatCommandServiceImpl implements ChatCommandService{
+export class TTYCommand {
     constructor(
         private readonly fileIO: FileIO,
-        private readonly llmProvider: LLMProvider,
+        private readonly ioStream: IOStream,
+        private readonly env: Pick<AppEnv, "SESSIONS_FOLDER"|"PROMPTS_FOLDER">,
     ) {}
-    public handle = async (command: string, context: ChatCommandContext) => {
+    public handle = async (command: string, context: TTYCommandContext) => {
         const match = command.match(/^\/([a-zA-Z]+) *(.*)/)
         if (!match) {
             throw new Error("Invalid input");
@@ -42,15 +37,16 @@ class ChatCommandServiceImpl implements ChatCommandService{
                 return;
             case "save":
                 await this.save(context, args);
-                context.write('Chat saved');
                 return;
             case "load":
                 await this.load(context, args);
-                context.write('Chat loaded');
                 return;
             case "undo":
                 context.chat.undo();
-                context.repaint();
+                this.ioStream.clear();
+                context.chat.messages
+                  .map(msg => formatMsg(msg))
+                  .forEach(msg => this.ioStream.writeln(msg))
                 return;
             case "retry":
                 await this.retry(context);
@@ -65,11 +61,12 @@ class ChatCommandServiceImpl implements ChatCommandService{
                 await this.history(context);
                 return
             case "reset":
-                await context.reset();
-                context.write('Chat reset');
+                context.chat.clear();
+                this.ioStream.clear();
+                await this.ioStream.writeln('Chat reset');
                 return;
             case "debug":
-                this.debug(context, args);
+                await this.debug(context);
                 return;
             case "s":
             case "story":
@@ -81,11 +78,11 @@ class ChatCommandServiceImpl implements ChatCommandService{
                 await this.model(context, args);
                 return;
             default:
-                context.write("Invalid command");
+                await this.ioStream.writeln("Invalid command");
         }
     }
 
-    private save = async (context: ChatCommandContext, args: string) => {
+    private save = async (context: TTYCommandContext, args: string) => {
         let name = "last_session";
         if (args) {
             const match = args.match(/^[0-9a-zA-Z ]+$/);
@@ -95,20 +92,22 @@ class ChatCommandServiceImpl implements ChatCommandService{
             name = match[0];
         }
         const json = context.chat.dehydrate();
-        this.fileIO.mkdir(context.pathToSessions);
-        await this.fileIO.write(path.join(context.pathToSessions, `${name}.json`), json);
+        this.fileIO.mkdir(this.env.SESSIONS_FOLDER);
+        await this.fileIO.write(path.join(this.env.SESSIONS_FOLDER, `${name}.json`), json);
+        await this.ioStream.writeln('Chat saved');
     }
 
-    private load = async (context: ChatCommandContext, args: string) => {
+    private load = async (context: TTYCommandContext, args: string) => {
         if (args && !args.match(/^([0-9a-zA-Z]+$)/)) {
             throw new Error("Invalid sessions id");
         }
         const name = args ? args : "last_session";
-        const content = await this.fileIO.read(path.join(context.pathToSessions, `${name}.json`));
+        const content = await this.fileIO.read(path.join(this.env.SESSIONS_FOLDER, `${name}.json`));
         context.chat.hydrate(content.toString());
+        await this.ioStream.writeln('Chat loaded');
     }
 
-    private retry = async (context: ChatCommandContext) => {
+    private retry = async (context: TTYCommandContext) => {
         const messages = context.chat.messages;
         const index = _.findLastIndex(messages, msg => msg.role === "user");
         if (index === -1) {
@@ -117,22 +116,22 @@ class ChatCommandServiceImpl implements ChatCommandService{
         const lastMsg = messages[index];
         context.chat.undo();
         context.chat.addUserMsg(lastMsg.content);
-        await context.retry();
+        await context.sendRequest(context.chat);
     }
 
     // TODO: caching?
-    private prompts = async (context: ChatCommandContext, args: string) => {
-        const folder = context.pathToPrompts;
+    private prompts = async (context: TTYCommandContext, args: string) => {
+        const folder = this.env.PROMPTS_FOLDER;
         this.fileIO.mkdir(folder);
-        const files = this.fileIO.ls(context.pathToPrompts)
+        const files = this.fileIO.ls(this.env.PROMPTS_FOLDER)
             .filter(file => file.match(PROMPT_FILE_REGEX))
             .map(file => file.slice(0, -4));
         if (!files || files.length === 0) {
-            context.write("No prompt available.");
+            await this.ioStream.writeln("No prompt available.");
             return;
         }
         if (args === "") {
-            context.write(this.printArray(files));
+            await this.ioStream.writeln(this.printArray(files));
             return;
         } else {
             const match = args.match(/(\d+)$/);
@@ -150,9 +149,9 @@ class ChatCommandServiceImpl implements ChatCommandService{
                 fileName = args;
             }
             try {
-                const content = await this.fileIO.read(path.join(context.pathToPrompts, `${fileName}.txt`));
+                const content = await this.fileIO.read(path.join(this.env.PROMPTS_FOLDER, `${fileName}.txt`));
                 context.chat.prompt = content.toString();
-                await context.write("Prompt loaded.");
+                await this.ioStream.writeln("Prompt loaded.");
             } catch (e) {
                 logger.info('Unable to read prompts', {
                     error: e
@@ -162,32 +161,31 @@ class ChatCommandServiceImpl implements ChatCommandService{
         }
     }
 
-    private history = async (context: ChatCommandContext) => {
+    private history = async (context: TTYCommandContext) => {
         const histories = context.chat.histories;
         if (histories.length === 0) {
-            context.write("History is empty");
+            await this.ioStream.writeln("History is empty");
         } else {
-            context.write("History:");
-            context.write(histories.join("\n"))
+            await this.ioStream.writeln("History:");
+            await this.ioStream.writeln(histories.join("\n"))
         }
     }
 
-    private story(context: ChatCommandContext, args: string) {
+    private story(context: TTYCommandContext, args: string) {
         if (args.length === 0) {
             return;
         }
         context.chat.story = args;
     }
 
-    private model = async (context: ChatCommandContext, args: string) => {
-        const client = this.llmProvider.getClient(context.provider)
-        const models = await client.getModels();
+    private model = async (context: TTYCommandContext, args: string) => {
+        const models = await context.client.getModels();
         if (!models || models.length === 0) {
-            context.write("No models available.");
+            await this.ioStream.writeln("No models available.");
             return;
         }
         if (args.length === 0) {
-            context.write(this.printArray(models));
+            await this.ioStream.writeln(this.printArray(models));
             return;
         }
         const match = args.match(/(\d+)$/);
@@ -199,11 +197,11 @@ class ChatCommandServiceImpl implements ChatCommandService{
             selected = args;
         }
         if (!selected || !models.includes(selected)) {
-            context.write("Invalid models selected");
+            await this.ioStream.writeln("Invalid models selected");
             return;
         }
         context.chat.model = selected;
-        context.write("Model selected.");
+        await this.ioStream.writeln("Model selected.");
     }
 
     private printArray = (arr: string[]) => {
@@ -213,9 +211,9 @@ class ChatCommandServiceImpl implements ChatCommandService{
         return rtn;
     }
 
-    private debug(context: ChatCommandContext, args: string) {
+    private debug = async (context: TTYCommandContext) => {
         const message = context.chat.messages.map(msg => msg.content.length >= 100 ? msg.content.slice(0, 100) + "..." : msg.content);
-        context.write(JSON.stringify({
+        await this.ioStream.writeln(JSON.stringify({
             prompt: context.chat.prompt,
             story: context.chat.story,
             message
@@ -223,6 +221,6 @@ class ChatCommandServiceImpl implements ChatCommandService{
     }
 }
 
-const chatCommandService = new ChatCommandServiceImpl(fileIO, llmProvider);
+const ttyCommand = new TTYCommand(fileIO, ioStream, env);
 
-export default chatCommandService
+export default ttyCommand

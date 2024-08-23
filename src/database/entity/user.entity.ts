@@ -11,7 +11,13 @@ export class UserEntity {
         nullable: false,
         unique: true,
     })
-    remoteId: number|undefined;
+    remoteId?: string;
+
+    @Column({
+        type: "varchar",
+        length: 32
+    })
+    namespace?: string;
 
     @Column({
         type: 'varchar',

@@ -5,11 +5,11 @@ import database from "@database";
 const { dataSource: source } = database;
 
 export type UserRepository = Repository<UserEntity> & {
-    upsertByRemoteId: (entity: Partial<UserEntity> & { remoteId: number }) => Promise<UserEntity>;
+    upsertByRemoteId: (entity: Partial<UserEntity> & { remoteId: string }) => Promise<UserEntity>;
 }
 
 const userRepository: UserRepository = source.getRepository(UserEntity).extend({
-    upsertByRemoteId: async (entity: Partial<UserEntity>) => {
+    upsertByRemoteId: async (entity: Partial<UserEntity> & { remoteId: string }) => {
         const upserted = await source.getRepository(UserEntity).createQueryBuilder()
             .insert()
             .into(UserEntity)

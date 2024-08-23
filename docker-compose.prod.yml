@@ -18,12 +18,12 @@ services:
     env_file:
       - ./.env
 
-  mq_worker:
+  telegram_worker:
     restart: always
     build:
       context: .
       dockerfile: ./docker/app/Dockerfile
-    command: ["node", "dist/bin/worker/index"]
+    command: ["node", "dist/bin/telegram"]
     volumes:
       - ./var:/app/var
     env_file:
