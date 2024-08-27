@@ -82,4 +82,8 @@ export class Chat {
     this._messages = [];
     this._histories = [];
   }
+
+  clearMessages() {
+    this._messages = []
+  }
 }

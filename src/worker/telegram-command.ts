@@ -36,6 +36,7 @@ export class TelegramCommand {
                 return;
             case "undo":
                 context.chat.undo();
+                await context.reply('Message undone.');
                 return;
             case "retry":
                 await this.retry(context);
@@ -50,8 +51,7 @@ export class TelegramCommand {
                 await this.history(context);
                 return
             case "reset":
-                context.chat.clear();
-                await context.reply('Chat reset');
+                await this.reset(context, args);
                 return;
             case "debug":
                 await this.debug(context);
@@ -79,6 +79,7 @@ export class TelegramCommand {
         const lastMsg = messages[index];
         context.chat.undo();
         context.chat.addUserMsg(lastMsg.content);
+        await context.reply("Retrying");
         await context.sendRequest(context.chat);
     }
 
@@ -179,8 +180,28 @@ export class TelegramCommand {
         await context.reply(JSON.stringify({
             prompt: context.chat.prompt,
             story: context.chat.story,
-            message
+            message,
+            model: context.chat.model
         }, null, 4))
+    }
+
+    private reset = async (context: TelegramCommandContext, args: string) => {
+        if ("history".startsWith(args)) {
+            context.chat.histories = [];
+            await context.reply('History reset');
+        } else if ("story".startsWith(args)) {
+            context.chat.story = "";
+            await context.reply('Story reset');
+        } else if ("prompt".startsWith(args)) {
+            context.chat.prompt = "";
+            await context.reply('Prompt reset');
+        } else if ("messages".startsWith(args)) {
+            context.chat.clearMessages();
+            await context.reply('Messages reset');
+        } else {
+            context.chat.clear();
+            await context.reply('Chat reset');
+        }
     }
 }
 
