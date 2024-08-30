@@ -16,7 +16,7 @@ services:
     volumes:
       - ./var:/app/var
     env_file:
-      - ./.env
+      - ./.env.prod
 
   telegram_worker:
     restart: always
@@ -27,4 +27,4 @@ services:
     volumes:
       - ./var:/app/var
     env_file:
-      - ./.env
+      - ./.env.prod

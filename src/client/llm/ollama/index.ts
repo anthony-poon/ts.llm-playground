@@ -32,15 +32,19 @@ export class OllamaClient implements LLMClient{
   }
   async chat(chat: Chat): Promise<ChatCompletionResponse> {
     const request = toCompletionRequest(chat);
+    const model = chat.model || this.env.OLLAMA_MODEL;
+    if (!model) {
+      throw new Error('No model selected');
+    }
     const response = await this.client.post<OllamaChatCompletionResponse>("/api/chat", {
       ...request,
-      model: chat.model || this.env.OLLAMA_MODEL || "llama3",
+      model,
       stream: false,
       options: {
         // https://github.com/ollama/ollama/blob/main/docs/modelfile.md
         // repeat_last_n: -1,
         // repeat_penalty: 1.5,
-        // num_ctx: 16384,
+        num_ctx: this.env.CHAT_COMPLETION_CONTEXT_SIZE,
         // temperature: 1.2,   // creativeness; default 0.7
         // num_predict: -2,
         // top_k: 80,        // low = conservative, high = diverse; default 40

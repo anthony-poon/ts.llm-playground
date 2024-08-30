@@ -71,6 +71,7 @@ export interface AppEnv {
 }
 
 export interface ChatCompletionEnv {
+  CHAT_COMPLETION_CONTEXT_SIZE: number
 }
 
 export interface OpenAIEnv {
@@ -170,6 +171,7 @@ const env: Env = {
   OLLAMA_MODEL: getOrDefault('OLLAMA_MODEL', ''),
   OLLAMA_BASIC_AUTH_USER: getOrDefault('OLLAMA_BASIC_AUTH_USER', ''),
   OLLAMA_BASIC_AUTH_PASS: getOrDefault('OLLAMA_BASIC_AUTH_PASS', ''),
+  CHAT_COMPLETION_CONTEXT_SIZE: parseInt(getOrDefault('CHAT_COMPLETION_CONTEXT_SIZE', '4096'), 10),
   DB_HOST: getOrThrow('DB_HOST'),
   DB_PORT: parseInt(getOrDefault('DB_PORT', '5432'), 10),
   DB_USER: getOrThrow('DB_USER'),
