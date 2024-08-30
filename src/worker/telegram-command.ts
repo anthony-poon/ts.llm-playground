@@ -186,21 +186,30 @@ export class TelegramCommand {
     }
 
     private reset = async (context: TelegramCommandContext, args: string) => {
+        if (args.trim().length === 0) {
+            context.chat.clear();
+            await context.reply('Chat reset');
+            return
+        }
         if ("history".startsWith(args)) {
             context.chat.histories = [];
             await context.reply('History reset');
-        } else if ("story".startsWith(args)) {
+            return;
+        }
+        if ("story".startsWith(args)) {
             context.chat.story = "";
             await context.reply('Story reset');
-        } else if ("prompt".startsWith(args)) {
+            return
+        }
+        if ("prompt".startsWith(args)) {
             context.chat.prompt = "";
             await context.reply('Prompt reset');
-        } else if ("messages".startsWith(args)) {
+            return
+        }
+        if ("messages".startsWith(args)) {
             context.chat.clearMessages();
             await context.reply('Messages reset');
-        } else {
-            context.chat.clear();
-            await context.reply('Chat reset');
+            return;
         }
     }
 }
