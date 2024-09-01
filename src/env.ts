@@ -86,6 +86,12 @@ export interface OllamaEnv {
   OLLAMA_BASIC_AUTH_PASS: string;
 }
 
+export interface ArliAIEnv {
+  ARLI_AI_BASE_URL: string;
+  ARLI_AI_MODEL: string;
+  ARLI_AI_API_KEY: string;
+}
+
 export interface HttpEnv {
   IP_ADDRESS: string;
   PORT: number;
@@ -126,7 +132,7 @@ export interface MsgQueueEnv {
   TG_MESSAGE_QUEUE: string;
 }
 
-export interface Env extends AppEnv, OpenAIEnv, OllamaEnv, ChatCompletionEnv, HttpEnv, TelegramEnv, DatabaseEnv, MsgQueueEnv {}
+export interface Env extends AppEnv, OpenAIEnv, OllamaEnv, ArliAIEnv, ChatCompletionEnv, HttpEnv, TelegramEnv, DatabaseEnv, MsgQueueEnv {}
 
 const ASSETS_FOLDER = getOrDefault('ASSETS_FOLDER', path.join(__dirname, '../var'))
 
@@ -171,6 +177,9 @@ const env: Env = {
   OLLAMA_MODEL: getOrDefault('OLLAMA_MODEL', ''),
   OLLAMA_BASIC_AUTH_USER: getOrDefault('OLLAMA_BASIC_AUTH_USER', ''),
   OLLAMA_BASIC_AUTH_PASS: getOrDefault('OLLAMA_BASIC_AUTH_PASS', ''),
+  ARLI_AI_BASE_URL: getOrDefault('ARLI_AI_BASE_URL', ''),
+  ARLI_AI_MODEL: getOrDefault('ARLI_AI_MODEL', ''),
+  ARLI_AI_API_KEY: getOrDefault('ARLI_AI_API_KEY', ''),
   CHAT_COMPLETION_CONTEXT_SIZE: parseInt(getOrDefault('CHAT_COMPLETION_CONTEXT_SIZE', '4096'), 10),
   DB_HOST: getOrThrow('DB_HOST'),
   DB_PORT: parseInt(getOrDefault('DB_PORT', '5432'), 10),

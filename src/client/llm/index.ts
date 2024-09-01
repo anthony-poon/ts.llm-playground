@@ -5,6 +5,7 @@ import {MockClient} from "@client/llm/mock";
 import httpClient from "@client/http";
 import {Chat} from "@core/chat";
 import loggerFactory from "@core/logger";
+import {ArliAIClient} from "@client/llm/arli-ai";
 
 export interface LLMClient {
   chat: (request: Chat) => Promise<ChatCompletionResponse>
@@ -86,7 +87,8 @@ export class LLMProvider {
 const llmProvider = new LLMProvider({
   openai: () => new OpenAIClient(env),
   ollama: () => new OllamaClient(httpClient, env),
-  mock: () => new MockClient()
+  mock: () => new MockClient(),
+  arliai: () =>  new ArliAIClient(httpClient, env),
 }, env)
 
 export default llmProvider;
