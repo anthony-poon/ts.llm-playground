@@ -7,11 +7,14 @@ const logger = loggerFactory.create('ollama-client');
 
 // https://github.com/ollama/ollama/blob/main/docs/api.md
 interface ArliAIClientChatCompletionResponse {
-  message: {
-    role: string,
-    content: string,
-    images: null|string
-  }
+  choices: {
+    index: number
+    message: {
+      role: string,
+      content: string,
+      images: null|string
+    }
+  }[]
 }
 
 
@@ -47,7 +50,7 @@ export class ArliAIClient implements LLMClient{
       }
     }, { ...this.getConfig() });
     return {
-      message: response.data.message.content
+      message: response.data.choices[0]?.message?.content
     };
   }
 
