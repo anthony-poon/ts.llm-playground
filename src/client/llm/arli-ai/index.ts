@@ -53,7 +53,7 @@ export class ArliAIClient implements LLMClient{
 
   async ping() {
     const response = await this.client.post<ArliAIClientChatCompletionResponse>("/api/chat", {
-      model: this.env.OLLAMA_MODEL || "llama3",
+      model: this.env.ARLI_AI_MODEL,
       options: {
         num_ctx: 4096
       }
@@ -63,10 +63,9 @@ export class ArliAIClient implements LLMClient{
 
   private getConfig = () => {
     return {
-      baseURL: this.env.OLLAMA_BASE_URL,
-      auth: {
-        username: this.env.OLLAMA_BASIC_AUTH_USER,
-        password: this.env.OLLAMA_BASIC_AUTH_PASS
+      baseURL: this.env.ARLI_AI_BASE_URL,
+      headers: {
+        Authorization: `Bearer ${this.env.ARLI_AI_API_KEY}`
       }
     }
   }
