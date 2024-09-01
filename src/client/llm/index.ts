@@ -31,25 +31,23 @@ const logger = loggerFactory.create('llm-provider');
 export const toCompletionRequest = (chat: Chat) => {
   const prompt = chat.prompt;
   const messages = [];
-  if (prompt) {
-    messages.push({
-      role: "system",
-      content: prompt
-    })
+  let systemMsg = ""
+  if (chat.prompt) {
+    systemMsg += chat.prompt + "\n"
   }
   if (chat.story) {
-    messages.push({
-      role: "system",
-      content: "The story setting is as follow: " + chat.story + "\n"
-    })
+    systemMsg += "The story setting is as follow: " + chat.story + "\n"
   }
   if (chat.histories.length > 0) {
-    const history = `History of the story so far:\n` + chat.histories.join("\n");
+    systemMsg += `History of the story so far:\n` + chat.histories.join("\n");
+  }
+  if (systemMsg.trim().length >= 0) {
     messages.push({
       role: "system",
-      content: history
+      content: systemMsg.trim()
     })
   }
+
   if (chat.messages.length > 0) {
     messages.push(...chat.messages);
   }
