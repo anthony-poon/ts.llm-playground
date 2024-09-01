@@ -30,7 +30,7 @@ export class ArliAIClient implements LLMClient{
     if (!model) {
       throw new Error('No model selected');
     }
-    const response = await this.client.post<ArliAIClientChatCompletionResponse>("/api/chat", {
+    const response = await this.client.post<ArliAIClientChatCompletionResponse>("/chat/completions", {
       ...request,
       model,
       stream: false,
@@ -52,7 +52,7 @@ export class ArliAIClient implements LLMClient{
   }
 
   async ping() {
-    const response = await this.client.post<ArliAIClientChatCompletionResponse>("/api/chat", {
+    const response = await this.client.post<ArliAIClientChatCompletionResponse>("/chat/completions", {
       model: this.env.ARLI_AI_MODEL,
       options: {
         num_ctx: 4096
